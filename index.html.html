@@ -876,6 +876,14 @@ La emoción que sientes al escuchar un artista de tu mismo registro y reconocert
         <div class="legend-item"><div class="legend-dot" style="background:linear-gradient(90deg,rgba(179,157,219,.6),rgba(128,203,183,.6));"></div> Zona compartida</div>
       </div>
 
+      <!-- Botón de activación para iOS Safari -->
+      <div id="iosAudioBtn" style="text-align:center;margin-bottom:1.2rem;">
+        <button onclick="activarAudioIOS()" style="font-family:'Josefin Sans',sans-serif;font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;padding:.7rem 2rem;border-radius:100px;border:1px solid rgba(201,168,76,.5);background:rgba(201,168,76,.1);color:var(--gold2);cursor:pointer;display:inline-flex;align-items:center;gap:.6rem;">
+          🔊 Toca aquí primero para activar el audio
+        </button>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:.4rem;font-family:'Josefin Sans',sans-serif;">Requerido en iPhone y iPad (Safari)</div>
+      </div>
+
       <div class="piano-outer">
         <div class="piano" id="pianoKeys"></div>
       </div>
@@ -983,15 +991,12 @@ La emoción que sientes al escuchar un artista de tu mismo registro y reconocert
    No compartas estas claves públicamente fuera del
    grupo — son de solo lectura/inserción (anon key).
 ══════════════════════════════════════════════════ */
-const SUPABASE_URL  = 'https://tzxsfhjbemjjztnjlgsz.supabase.co';     // Ej: https://abcxyz.supabase.co
-const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6eHNmaGpiZW1qanp0bmpsZ3N6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NDQzNzEsImV4cCI6MjA5MDAyMDM3MX0.sY0nE_sQNfBpjXz0pzVaXDuPsfmARcKRhBcayhlfyqY';  // La "anon public" key de tu proyecto
+const SUPABASE_URL  = 'TU_URL_AQUI';     // Ej: https://abcxyz.supabase.co
+const SUPABASE_KEY  = 'TU_CLAVE_AQUI';  // La "anon public" key de tu proyecto
 
 // Inicializamos el cliente de Supabase usando el SDK cargado por CDN
 const { createClient } = supabase;
-window.supabaseClient = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ══════════════════════════════════════════════════
    DATOS DEL GRUPO
@@ -1438,23 +1443,66 @@ function resetTimer(num, total) {
    Toca notas reales usando Web Audio API.
 ══════════════════════════════════════════════════ */
 let audioCtx = null;
+let audioUnlocked = false;
+
+/* iOS Safari requiere que el AudioContext se cree Y se
+   reanude dentro de un gesto directo del usuario (touchend).
+   Esta función se llama al tocar el botón de activar. */
+async function activarAudioIOS() {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    // El resume() es lo que iOS requiere dentro del gesto
+    if (audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
+    // Reproducimos un silencio brevísimo para "desbloquear" el contexto
+    const buf = audioCtx.createBuffer(1, 1, 22050);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(audioCtx.destination);
+    src.start(0);
+
+    audioUnlocked = true;
+
+    // Actualizamos el botón para indicar éxito
+    const btn = document.getElementById('iosAudioBtn');
+    if (btn) {
+      btn.innerHTML = '<div style="font-family:\'Josefin Sans\',sans-serif;font-size:.72rem;letter-spacing:.12em;color:var(--contralto2);">✓ Audio activado — ya puedes tocar el teclado</div>';
+    }
+  } catch(e) {
+    console.error('Audio unlock error:', e);
+  }
+}
 
 function getMidiFreq(midi) {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
-function playNote(freq) {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const osc  = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-  gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
-  osc.start(audioCtx.currentTime);
-  osc.stop(audioCtx.currentTime + 1.2);
+async function playNote(freq) {
+  try {
+    // Crear contexto si no existe
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    // Reanudar si está suspendido (necesario en iOS)
+    if (audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
+    const osc  = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.4);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 1.4);
+  } catch(e) {
+    console.error('playNote error:', e);
+  }
 }
 
 function buildPiano() {
@@ -1516,12 +1564,12 @@ function buildPiano() {
   container.innerHTML = html;
 }
 
-function pianoClick(freq, name) {
-  playNote(freq);
+async function pianoClick(freq, name) {
+  await playNote(freq);
   const el = document.getElementById('playingNote');
   el.textContent = `♪  ${name}  ·  ${freq} Hz`;
   el.style.opacity = '1';
-  setTimeout(() => el.style.opacity = '0.4', 1000);
+  setTimeout(() => el.style.opacity = '0.4', 1200);
 }
 
 /* ══════════════════════════════════════════════════
