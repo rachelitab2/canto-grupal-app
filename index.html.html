@@ -991,8 +991,8 @@ La emoción que sientes al escuchar un artista de tu mismo registro y reconocert
    No compartas estas claves públicamente fuera del
    grupo — son de solo lectura/inserción (anon key).
 ══════════════════════════════════════════════════ */
-const SUPABASE_URL  = 'TU_URL_AQUI';     // Ej: https://abcxyz.supabase.co
-const SUPABASE_KEY  = 'TU_CLAVE_AQUI';  // La "anon public" key de tu proyecto
+const SUPABASE_URL  = 'https://tzxsfhjbemjjztnjlgsz.supabase.co';     // Ej: https://abcxyz.supabase.co
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6eHNmaGpiZW1qanp0bmpsZ3N6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NDQzNzEsImV4cCI6MjA5MDAyMDM3MX0.sY0nE_sQNfBpjXz0pzVaXDuPsfmARcKRhBcayhlfyqY';  // La "anon public" key de tu proyecto
 
 // Inicializamos el cliente de Supabase usando el SDK cargado por CDN
 const { createClient } = supabase;
@@ -1443,36 +1443,43 @@ function resetTimer(num, total) {
    Toca notas reales usando Web Audio API.
 ══════════════════════════════════════════════════ */
 let audioCtx = null;
-let audioUnlocked = false;
 
-/* iOS Safari requiere que el AudioContext se cree Y se
-   reanude dentro de un gesto directo del usuario (touchend).
-   Esta función se llama al tocar el botón de activar. */
-async function activarAudioIOS() {
+/* ── Inicializa el AudioContext de forma compatible
+   con iOS Safari, Chrome y Firefox ── */
+function getAudioCtx() {
+  if (!audioCtx) {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    audioCtx = new AC();
+  }
+  return audioCtx;
+}
+
+/* ── Botón de activación para iOS Safari ──
+   iOS requiere que el AudioContext se "desbloquee"
+   desde un toque directo del usuario. */
+function activarAudioIOS() {
+  var ctx = getAudioCtx();
+  if (!ctx) { alert('Tu navegador no soporta audio web.'); return; }
+
+  // Resume si está suspendido
+  if (ctx.state === 'suspended' && ctx.resume) {
+    ctx.resume();
+  }
+
+  // Reproduce un buffer vacío para desbloquear
   try {
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    // El resume() es lo que iOS requiere dentro del gesto
-    if (audioCtx.state === 'suspended') {
-      await audioCtx.resume();
-    }
-    // Reproducimos un silencio brevísimo para "desbloquear" el contexto
-    const buf = audioCtx.createBuffer(1, 1, 22050);
-    const src = audioCtx.createBufferSource();
+    var buf = ctx.createBuffer(1, 1, 22050);
+    var src = ctx.createBufferSource();
     src.buffer = buf;
-    src.connect(audioCtx.destination);
+    src.connect(ctx.destination);
     src.start(0);
+  } catch(e) {}
 
-    audioUnlocked = true;
-
-    // Actualizamos el botón para indicar éxito
-    const btn = document.getElementById('iosAudioBtn');
-    if (btn) {
-      btn.innerHTML = '<div style="font-family:\'Josefin Sans\',sans-serif;font-size:.72rem;letter-spacing:.12em;color:var(--contralto2);">✓ Audio activado — ya puedes tocar el teclado</div>';
-    }
-  } catch(e) {
-    console.error('Audio unlock error:', e);
+  // Actualiza el botón
+  var btn = document.getElementById('iosAudioBtn');
+  if (btn) {
+    btn.innerHTML = '<div style="font-family:\'Josefin Sans\',sans-serif;font-size:.75rem;letter-spacing:.12em;color:var(--contralto2);padding:.5rem 1rem;">✓ Audio activado — ya puedes tocar el teclado</div>';
   }
 }
 
@@ -1480,28 +1487,28 @@ function getMidiFreq(midi) {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
-async function playNote(freq) {
+function playNote(freq) {
+  var ctx = getAudioCtx();
+  if (!ctx) return;
+
+  // Resume si Safari lo suspendió
+  if (ctx.state === 'suspended' && ctx.resume) {
+    ctx.resume();
+  }
+
   try {
-    // Crear contexto si no existe
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    // Reanudar si está suspendido (necesario en iOS)
-    if (audioCtx.state === 'suspended') {
-      await audioCtx.resume();
-    }
-    const osc  = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+    var osc  = ctx.createOscillator();
+    var gain = ctx.createGain();
     osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    gain.connect(ctx.destination);
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.4);
-    osc.start(audioCtx.currentTime);
-    osc.stop(audioCtx.currentTime + 1.4);
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(0.35, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 1.5);
   } catch(e) {
-    console.error('playNote error:', e);
+    console.error('playNote error:', e.message);
   }
 }
 
@@ -1564,12 +1571,12 @@ function buildPiano() {
   container.innerHTML = html;
 }
 
-async function pianoClick(freq, name) {
-  await playNote(freq);
-  const el = document.getElementById('playingNote');
-  el.textContent = `♪  ${name}  ·  ${freq} Hz`;
+function pianoClick(freq, name) {
+  playNote(freq);
+  var el = document.getElementById('playingNote');
+  el.textContent = '\u266a  ' + name + '  \u00b7  ' + freq + ' Hz';
   el.style.opacity = '1';
-  setTimeout(() => el.style.opacity = '0.4', 1200);
+  setTimeout(function(){ el.style.opacity = '0.4'; }, 1200);
 }
 
 /* ══════════════════════════════════════════════════
