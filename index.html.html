@@ -6,6 +6,7 @@
 <title>Descubre Tu Voz — Canto Cristiano Evangélico</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Josefin+Sans:wght@300;400;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
 <style>
 :root {
   --navy:#0d1b2a; --deep:#162032; --gold:#c9a84c; --gold2:#e8c96d;
@@ -515,8 +516,8 @@ Pregúntate: ¿cómo trata las palabras importantes? ¿Hay un momento que te emo
       <div class="legend-item"><div class="legend-dot" style="background:linear-gradient(90deg,rgba(179,157,219,.6),rgba(128,203,183,.6));"></div>Zona compartida</div>
     </div>
     <div id="iosAudioBtn" style="text-align:center;margin-bottom:1.2rem;">
-      <button onclick="activarAudioIOS()" style="font-family:'Josefin Sans',sans-serif;font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;padding:.7rem 2rem;border-radius:100px;border:1px solid rgba(201,168,76,.5);background:rgba(201,168,76,.1);color:var(--gold2);cursor:pointer;display:inline-flex;align-items:center;gap:.6rem;">🔊 Toca aquí primero para activar el audio</button>
-      <div style="font-size:.72rem;color:var(--muted);margin-top:.4rem;font-family:'Josefin Sans',sans-serif;">Requerido en iPhone y iPad (Safari)</div>
+      <button onclick="activarPiano()" style="font-family:'Josefin Sans',sans-serif;font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;padding:.7rem 2rem;border-radius:100px;border:1px solid rgba(201,168,76,.5);background:rgba(201,168,76,.1);color:var(--gold2);cursor:pointer;display:inline-flex;align-items:center;gap:.6rem;">🎹 Toca aquí para cargar el piano</button>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:.4rem;font-family:'Josefin Sans',sans-serif;">Requerido en iPhone, iPad y primera vez en cualquier navegador</div>
     </div>
     <div class="piano-outer"><div class="piano" id="pianoKeys"></div></div>
     <div class="playing-note" id="playingNote">— Toca una tecla para escuchar —</div>
@@ -545,7 +546,7 @@ Pregúntate: ¿cómo trata las palabras importantes? ¿Hay un momento que te emo
   <div id="bitacoraFormPanel" style="display:none;" class="ficha-container">
     <div style="font-family:'Josefin Sans',sans-serif;font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem;">Sesión activa: <span id="sesionActivaNombre" style="color:var(--cream);font-size:.8rem;letter-spacing:.04em;text-transform:none;font-family:'Lora',serif;"></span></div>
     <label class="ficha-select-label" style="margin-top:.8rem;">¿Quién escribe?</label>
-    <select id="bitacoraPersona">
+    <select id="bitacoraPersona" onchange="cargarBitacora()">
       <option value="">— Tu nombre —</option>
       <option value="Ruth Abreu">Ruth Abreu</option><option value="Lorena Méndez">Lorena Méndez</option>
       <option value="Camila Caraballo">Camila Caraballo</option><option value="Rachel Benua">Rachel Benua</option>
@@ -566,7 +567,7 @@ Pregúntate: ¿cómo trata las palabras importantes? ¿Hay un momento que te emo
   <p class="section-desc">Comparte lo que estás descubriendo. Después de escuchar a tu artista referente, deja un mensaje aquí. Todo el grupo lo ve en tiempo real.</p>
   <div class="muro-form">
     <label class="ficha-select-label">¿Quién escribe?</label>
-    <select id="muroPersona">
+    <select id="muroPersona" onchange="cargarMuro()">
       <option value="">— Tu nombre —</option>
       <option value="Ruth Abreu">Ruth Abreu</option><option value="Lorena Méndez">Lorena Méndez</option>
       <option value="Camila Caraballo">Camila Caraballo</option><option value="Rachel Benua">Rachel Benua</option>
@@ -921,39 +922,63 @@ function resetTimer(num, total) {
 // ═══════════════════════════════════════
 // PIANO / AUDIO
 // ═══════════════════════════════════════
-function activarAudioIOS() {
-  var AC = window.AudioContext || window.webkitAudioContext;
-  if (!AC) { alert('Tu navegador no soporta audio web.'); return; }
-  audioCtx = new AC();
-  tocarBuffer(audioCtx, 261.63);
+// ═══════════════════════════════════════
+// PIANO CON TONE.JS (samples reales)
+// Usa el piano Salamander disponible en CDN público.
+// Funciona en iOS Safari, Android Chrome, PC.
+// ═══════════════════════════════════════
+var pianoSampler = null;
+var pianoListo = false;
+ 
+async function activarPiano() {
   var btn = document.getElementById('iosAudioBtn');
-  if (btn) btn.innerHTML = '<div style="font-family:\'Josefin Sans\',sans-serif;font-size:.75rem;letter-spacing:.12em;color:var(--contralto2);padding:.5rem 1rem;text-align:center;">✓ Audio activado — ya puedes tocar el teclado</div>';
-}
+  if (btn) btn.innerHTML = '<div style="font-family:\'Josefin Sans\',sans-serif;font-size:.75rem;color:var(--muted);padding:.5rem;">⏳ Cargando piano...</div>';
  
-function tocarBuffer(ctx, freq) {
-  try {
-    var sr = ctx.sampleRate, dur = 1.4, n = Math.floor(sr * dur);
-    var buf = ctx.createBuffer(1, n, sr);
-    var d = buf.getChannelData(0);
-    for (var i = 0; i < n; i++) {
-      d[i] = Math.sin(2 * Math.PI * freq * (i / sr)) * (1 - i / n) * 0.65;
+  // Arrancar el AudioContext de Tone dentro del gesto (requisito iOS)
+  await Tone.start();
+ 
+  // Samples del piano Salamander via CDN público (GitHub Pages de tonejs)
+  pianoSampler = new Tone.Sampler({
+    urls: {
+      'A0':'A0.mp3','C1':'C1.mp3','D#1':'Ds1.mp3','F#1':'Fs1.mp3',
+      'A1':'A1.mp3','C2':'C2.mp3','D#2':'Ds2.mp3','F#2':'Fs2.mp3',
+      'A2':'A2.mp3','C3':'C3.mp3','D#3':'Ds3.mp3','F#3':'Fs3.mp3',
+      'A3':'A3.mp3','C4':'C4.mp3','D#4':'Ds4.mp3','F#4':'Fs4.mp3',
+      'A4':'A4.mp3','C5':'C5.mp3','D#5':'Ds5.mp3','F#5':'Fs5.mp3',
+      'A5':'A5.mp3','C6':'C6.mp3','D#6':'Ds6.mp3','F#6':'Fs6.mp3',
+      'A6':'A6.mp3','C7':'C7.mp3','D#7':'Ds7.mp3','F#7':'Fs7.mp3',
+      'A7':'A7.mp3','C8':'C8.mp3'
+    },
+    release: 1,
+    baseUrl: 'https://tonejs.github.io/audio/salamander/',
+    onload: function() {
+      pianoListo = true;
+      var b = document.getElementById('iosAudioBtn');
+      if (b) b.innerHTML = '<div style="font-family:\'Josefin Sans\',sans-serif;font-size:.75rem;letter-spacing:.12em;color:var(--contralto2);padding:.5rem 1rem;text-align:center;">✓ Piano listo — ya puedes tocar el teclado</div>';
     }
-    var src = ctx.createBufferSource();
-    src.buffer = buf;
-    var g = ctx.createGain();
-    g.gain.value = 1;
-    src.connect(g);
-    g.connect(ctx.destination);
-    src.start(0);
-  } catch(e) { console.error('audio:', e.message); }
+  }).toDestination();
 }
  
-function playNote(freq) {
-  var AC = window.AudioContext || window.webkitAudioContext;
-  if (!AC) return;
-  if (!audioCtx) audioCtx = new AC();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  tocarBuffer(audioCtx, freq);
+function playNote(midiNote, label, octave) {
+  if (!pianoListo || !pianoSampler) {
+    // Si no está cargado, recordar al usuario
+    var b = document.getElementById('iosAudioBtn');
+    if (b && !pianoListo) b.style.border = '1px solid var(--gold)';
+    return;
+  }
+  // Convertir nombre español a notación inglesa para Tone.js
+  var ESP_TO_ENG = {'Do':'C','Re':'D','Mi':'E','Fa':'F','Sol':'G','La':'A','Si':'B'};
+  var noteName = label.replace('#','');
+  var isSharp = label.indexOf('#') !== -1;
+  var engNote = ESP_TO_ENG[noteName] || noteName;
+  var toneNote = engNote + (isSharp ? '#' : '') + octave;
+  try {
+    pianoSampler.triggerAttackRelease(toneNote, '2n');
+    var el = document.getElementById('playingNote');
+    el.textContent = '♪  ' + label + octave + '  —  ' + toneNote;
+    el.style.opacity = '1';
+    setTimeout(function() { el.style.opacity = '0.4'; }, 1500);
+  } catch(e) { console.error('Tone error:', e.message); }
 }
  
 function midiFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
@@ -963,15 +988,13 @@ function buildPiano() {
   container.innerHTML = '';
   var IS_WHITE = [true,false,true,false,true,true,false,true,false,true,false,true];
   var NAMES = ['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si'];
-  var MEZZO_MIN=52, MEZZO_MAX=72, CONTRA_MIN=43, CONTRA_MAX=62, BARI_MIN=36, BARI_MAX=64;
+  var MEZZO_MIN=52,MEZZO_MAX=72,CONTRA_MIN=43,CONTRA_MAX=62,BARI_MIN=36,BARI_MAX=64;
   function zoneClass(midi) {
-    var inM = midi>=MEZZO_MIN && midi<=MEZZO_MAX;
-    var inC = midi>=CONTRA_MIN && midi<=CONTRA_MAX;
-    var inB = midi>=BARI_MIN && midi<=BARI_MAX;
-    if (inM && inC) return 'multi-zone';
-    if (inM) return 'mezzo-zone';
-    if (inC) return 'contralto-zone';
-    if (inB) return 'baritono-zone';
+    var inM=midi>=MEZZO_MIN&&midi<=MEZZO_MAX, inC=midi>=CONTRA_MIN&&midi<=CONTRA_MAX, inB=midi>=BARI_MIN&&midi<=BARI_MAX;
+    if(inM&&inC) return 'multi-zone';
+    if(inM) return 'mezzo-zone';
+    if(inC) return 'contralto-zone';
+    if(inB) return 'baritono-zone';
     return '';
   }
   var html = '';
@@ -979,14 +1002,14 @@ function buildPiano() {
     var ni = midi % 12;
     var oct = Math.floor(midi / 12) - 1;
     var isW = IS_WHITE[ni];
-    var freq = midiFreq(midi).toFixed(2);
     var label = NAMES[ni];
     var zone = isW ? zoneClass(midi) : '';
-    var display = (ni === 0) ? label + oct : (ni === 4 || ni === 7) ? label : '';
+    var display = (ni===0) ? label+oct : (ni===4||ni===7) ? label : '';
+    var click = 'playNote(' + midi + ',\'' + label.replace("'","\\'") + '\',' + oct + ')';
     if (isW) {
-      html += '<div class="pkey white ' + zone + '" onclick="playNote(' + freq + ');document.getElementById(\'playingNote\').textContent=\'♪  ' + label + oct + '  ·  ' + freq + ' Hz\';"><div class="pkey-note">' + display + '</div></div>';
+      html += '<div class="pkey white ' + zone + '" onclick="' + click + '"><div class="pkey-note">' + display + '</div></div>';
     } else {
-      html += '<div class="pkey black" onclick="playNote(' + freq + ');document.getElementById(\'playingNote\').textContent=\'♪  ' + label + oct + '  ·  ' + freq + ' Hz\';"><div class="pkey-note">' + label + '</div></div>';
+      html += '<div class="pkey black" onclick="' + click + '"><div class="pkey-note">' + label + '</div></div>';
     }
   }
   container.innerHTML = html;
