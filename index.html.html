@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Descubre Tu Voz — Canto Cristiano Evangélico</title>
+
+  <!-- ═══ FUENTES ═══ -->
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Josefin+Sans:wght@300;400;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"/>
+
+  <!-- ═══ SUPABASE SDK (CDN oficial) ═══ -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    /* ══════════════════════════════════
+       VARIABLES DE COLOR Y RESET
+    ══════════════════════════════════ */
+    :root {
+      --navy:      #0d1b2a;
+      --deep:      #162032;
+      --gold:      #c9a84c;
+      --gold2:     #e8c96d;
+      --cream:     #f4efe6;
+      --muted:     #a0b0c2;
+      --mezzo:     #7b5ea7;
+      --mezzo2:    #b39ddb;
+      --contralto: #2e7d67;
+      --contralto2:#80cbb7;
+      --baritono:  #b5451b;
+      --baritono2: #f08b6a;
+      --card-bg:   rgba(255,255,255,0.04);
+      --border:    rgba(201,168,76,0.18);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--navy); color: var(--cream); font-family: 'Lora', Georgia, serif; min-height: 100vh; overflow-x: hidden; }
+
+    /* Textura de ruido sutil en el fondo */
+    body::before {
+      content: ''; position: fixed; inset: 0; z-index: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      opacity: .4; pointer-events: none;
+    }
+
+    /* ── Notas musicales flotantes de fondo ── */
+    .notes-bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+    .note { position: absolute; opacity: 0; animation: floatNote linear infinite; color: var(--gold); }
+    @keyframes floatNote {
+      0%   { transform: translateY(110vh) rotate(0deg);  opacity: 0; }
+      10%  { opacity: 0.12; }
+      90%  { opacity: 0.08; }
+      100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+    }
+
+    /* ══════════════════════════════════
+       LAYOUT PRINCIPAL
+    ══════════════════════════════════ */
+    .wrapper { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+
+    /* ══ HERO ══ */
+    .hero { text-align: center; padding: 5rem 1rem 3.5rem; }
+    .hero-label { font-family: 'Josefin Sans', sans-serif; font-size: .7rem; letter-spacing: .35em; text-transform: uppercase; color: var(--gold); margin-bottom: 1.2rem; }
+    .hero h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.4rem, 7vw, 4.2rem); font-weight: 300; line-height: 1.1; color: var(--cream); }
+    .hero h1 em { font-style: italic; color: var(--gold2); }
+    .hero-subtitle { font-family: 'Josefin Sans', sans-serif; font-weight: 300; font-size: .92rem; letter-spacing: .08em; color: var(--muted); margin-top: 1rem; max-width: 520px; margin-left: auto; margin-right: auto; line-height: 1.7; }
+    .hero-divider { width: 80px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); margin: 2rem auto; }
+
+    /* ══ TABS DE NAVEGACIÓN ══ */
+    .nav-tabs { display: flex; justify-content: center; gap: .6rem; flex-wrap: wrap; margin-bottom: 3rem; }
+    .tab-btn { font-family: 'Josefin Sans', sans-serif; font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; padding: .55rem 1.4rem; border-radius: 100px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: all .25s ease; }
+    .tab-btn:hover { color: var(--gold); border-color: var(--gold); }
+    .tab-btn.active { background: var(--gold); color: var(--navy); border-color: var(--gold); font-weight: 700; }
+
+    /* ══ TÍTULOS DE SECCIÓN ══ */
+    .section-title { font-family: 'Cormorant Garamond', serif; font-size: 1.9rem; font-weight: 300; color: var(--cream); margin-bottom: .4rem; }
+    .section-desc { font-size: .88rem; color: var(--muted); line-height: 1.7; margin-bottom: 2rem; font-family: 'Josefin Sans', sans-serif; font-weight: 300; letter-spacing: .03em; }
+
+    /* ══ ANIMACIÓN DE PÁGINAS ══ */
+    .page { display: none; animation: fadeIn .4s ease; }
+    .page.active { display: block; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+
+    /* ══════════════════════════════════
+       TARJETAS DE REGISTRO VOCAL
+    ══════════════════════════════════ */
+    .registro-card {
+      border: 1px solid var(--border); border-radius: 16px;
+      background: var(--card-bg); padding: 2rem; margin-bottom: 2rem;
+      position: relative; overflow: hidden; backdrop-filter: blur(6px);
+    }
+    /* Barra superior de color por registro */
+    .registro-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 16px 16px 0 0; }
+    .registro-card.mezzo::before     { background: linear-gradient(90deg,var(--mezzo),var(--mezzo2)); }
+    .registro-card.contralto::before { background: linear-gradient(90deg,var(--contralto),var(--contralto2)); }
+    .registro-card.baritono::before  { background: linear-gradient(90deg,var(--baritono),var(--baritono2)); }
+
+    .reg-badge { display: inline-block; font-family: 'Josefin Sans', sans-serif; font-size: .65rem; letter-spacing: .25em; text-transform: uppercase; padding: .3rem .9rem; border-radius: 100px; font-weight: 700; margin-bottom: 1rem; }
+    .mezzo    .reg-badge { background: rgba(123,94,167,.25); color: var(--mezzo2); }
+    .contralto .reg-badge { background: rgba(46,125,103,.25); color: var(--contralto2); }
+    .baritono  .reg-badge { background: rgba(181,69,27,.25); color: var(--baritono2); }
+
+    .reg-title { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 600; margin-bottom: .3rem; }
+    .mezzo    .reg-title { color: var(--mezzo2); }
+    .contralto .reg-title { color: var(--contralto2); }
+    .baritono  .reg-title { color: var(--baritono2); }
+
+    .reg-range { font-family: 'Josefin Sans', sans-serif; font-size: .8rem; letter-spacing: .1em; color: var(--muted); margin-bottom: 1.2rem; }
+    .reg-body { font-size: .95rem; line-height: 1.88; color: #c9d4e0; }
+    .reg-body strong { color: var(--cream); }
+    .reg-body p { margin-bottom: .9rem; }
+
+    /* Mini tarjetas de características dentro del registro */
+    .concepto-mini { margin-top: 1.4rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .8rem; }
+    .concepto-mini-item { border-radius: 10px; padding: .9rem 1rem; font-size: .82rem; line-height: 1.6; }
+    .mezzo    .concepto-mini-item { background: rgba(123,94,167,.12); border: 1px solid rgba(179,157,219,.2); }
+    .contralto .concepto-mini-item { background: rgba(46,125,103,.12); border: 1px solid rgba(128,203,183,.2); }
+    .baritono  .concepto-mini-item { background: rgba(181,69,27,.12);  border: 1px solid rgba(240,139,106,.2); }
+    .concepto-mini-label { font-family: 'Josefin Sans', sans-serif; font-size: .62rem; letter-spacing: .18em; text-transform: uppercase; margin-bottom: .3rem; }
+    .mezzo     .concepto-mini-label { color: var(--mezzo2); }
+    .contralto .concepto-mini-label { color: var(--contralto2); }
+    .baritono  .concepto-mini-label { color: var(--baritono2); }
+
+    .reg-traits { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.4rem; }
+    .trait { font-family: 'Josefin Sans', sans-serif; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; padding: .3rem .8rem; border-radius: 100px; border: 1px solid; }
+    .mezzo    .trait { border-color: rgba(179,157,219,.3); color: var(--mezzo2); }
+    .contralto .trait { border-color: rgba(128,203,183,.3); color: var(--contralto2); }
+    .baritono  .trait { border-color: rgba(240,139,106,.3); color: var(--baritono2); }
+
+    /* ══════════════════════════════════
+       TARJETAS DE INTEGRANTES
+    ══════════════════════════════════ */
+    .members-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.2rem; margin-top: 1.5rem; }
+    .member-card { border: 1px solid var(--border); border-radius: 14px; background: var(--card-bg); padding: 1.5rem; transition: transform .2s, border-color .2s; }
+    .member-card:hover { transform: translateY(-3px); }
+    .member-card.mezzo:hover     { border-color: var(--mezzo2); }
+    .member-card.contralto:hover { border-color: var(--contralto2); }
+    .member-card.baritono:hover  { border-color: var(--baritono2); }
+    .member-name { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; font-weight: 600; color: var(--cream); margin-bottom: .2rem; }
+    .member-reg  { font-family: 'Josefin Sans', sans-serif; font-size: .68rem; letter-spacing: .2em; text-transform: uppercase; margin-bottom: 1rem; }
+    .member-card.mezzo     .member-reg { color: var(--mezzo2); }
+    .member-card.contralto .member-reg { color: var(--contralto2); }
+    .member-card.baritono  .member-reg { color: var(--baritono2); }
+
+    /* ══════════════════════════════════
+       TARJETAS DE ARTISTAS
+    ══════════════════════════════════ */
+    .artist-section { margin-bottom: 3rem; }
+    .artist-section-title { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: .8rem; }
+    .artist-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .mezzo-dot { background: var(--mezzo2); } .contralto-dot { background: var(--contralto2); } .baritono-dot { background: var(--baritono2); }
+    .artist-card { border: 1px solid var(--border); border-radius: 14px; background: var(--card-bg); padding: 1.5rem 1.8rem; margin-bottom: 1.2rem; backdrop-filter: blur(4px); }
+    .artist-name { font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; font-weight: 600; color: var(--cream); margin-bottom: .15rem; }
+    .artist-tag  { font-family: 'Josefin Sans', sans-serif; font-size: .68rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); margin-bottom: 1rem; }
+    .artist-why  { font-size: .9rem; line-height: 1.75; color: #b8c8d8; margin-bottom: 1rem; }
+    .songs-title { font-family: 'Josefin Sans', sans-serif; font-size: .68rem; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin-bottom: .6rem; }
+    .songs-list  { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .song-pill   { font-family: 'Josefin Sans', sans-serif; font-size: .75rem; padding: .35rem .85rem; border-radius: 100px; background: rgba(201,168,76,.12); border: 1px solid rgba(201,168,76,.25); color: var(--gold2); letter-spacing: .04em; }
+    .listen-points { margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+    .listen-points-title { font-family: 'Josefin Sans', sans-serif; font-size: .68rem; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin-bottom: .6rem; }
+    .listen-point { display: flex; align-items: flex-start; gap: .6rem; font-size: .85rem; color: #a8bccf; line-height: 1.6; margin-bottom: .4rem; }
+    .listen-point::before { content: '♪'; color: var(--gold); font-size: .9rem; flex-shrink: 0; }
+
+    /* ══════════════════════════════════
+       FICHA DE EVALUACIÓN
+    ══════════════════════════════════ */
+    .ficha-container { border: 1px solid var(--border); border-radius: 16px; background: var(--card-bg); padding: 2rem; margin-bottom: 2rem; backdrop-filter: blur(4px); }
+    .ficha-select-label { font-family: 'Josefin Sans', sans-serif; font-size: .75rem; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); margin-bottom: .6rem; display: block; }
+    select, input[type=text], textarea {
+      width: 100%; background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--cream); font-family: 'Lora', serif; font-size: .9rem;
+      padding: .7rem 1rem; outline: none; transition: border-color .2s; margin-bottom: 1.2rem;
+    }
+    select:focus, input:focus, textarea:focus { border-color: var(--gold); }
+    select option { background: var(--deep); }
+    textarea { resize: vertical; min-height: 80px; }
+    .ficha-question { font-family: 'Josefin Sans', sans-serif; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-bottom: .4rem; display: block; }
+    .ficha-hint { font-size: .78rem; color: var(--muted); margin-bottom: .6rem; font-style: italic; }
+    .ficha-hr { border: none; border-top: 1px solid var(--border); margin: 1.4rem 0 1.8rem; }
+
+    /* ── Botones desplegables de conceptos ── */
+    .concepto-btn {
+      display: inline-flex; align-items: center; gap: .5rem;
+      font-family: 'Josefin Sans', sans-serif; font-size: .68rem; letter-spacing: .14em; text-transform: uppercase;
+      padding: .38rem 1rem; border-radius: 100px;
+      border: 1px solid rgba(201,168,76,.35); background: rgba(201,168,76,.07);
+      color: var(--gold2); cursor: pointer; transition: all .2s ease;
+      margin-bottom: .5rem; margin-right: .4rem;
+    }
+    .concepto-btn:hover { background: rgba(201,168,76,.16); border-color: var(--gold); }
+    .concepto-btn .arrow { font-size: .7rem; transition: transform .25s ease; display: inline-block; }
+    .concepto-btn.open .arrow { transform: rotate(180deg); }
+
+    .concepto-panel {
+      display: none; border-radius: 10px; border: 1px solid rgba(201,168,76,.18);
+      background: rgba(201,168,76,.05); padding: 1.1rem 1.3rem; margin-bottom: 1rem;
+      font-size: .87rem; line-height: 1.82; color: #c9d4e0;
+      animation: slideDown .25s ease; white-space: pre-line;
+    }
+    .concepto-panel.visible { display: block; }
+    @keyframes slideDown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+    .concepto-panel strong { color: var(--gold2); }
+    .concepto-panel .cp-title { font-family: 'Josefin Sans', sans-serif; font-size: .68rem; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); margin-bottom: .6rem; }
+
+    .concepto-group { margin-bottom: 1rem; }
+    .concepto-btns-row { display: flex; flex-wrap: wrap; margin-bottom: .3rem; }
+
+    /* ── Estrellas ── */
+    .star-row { display: flex; gap: .4rem; margin-bottom: 1.2rem; }
+    .star { font-size: 1.4rem; cursor: pointer; color: rgba(201,168,76,.3); transition: color .15s, transform .15s; }
+    .star:hover, .star.active { color: var(--gold); transform: scale(1.15); }
+
+    /* ── Botón guardar ── */
+    .submit-btn { font-family: 'Josefin Sans', sans-serif; font-size: .8rem; letter-spacing: .2em; text-transform: uppercase; font-weight: 700; padding: .85rem 2.5rem; border-radius: 100px; border: none; background: linear-gradient(135deg, var(--gold), var(--gold2)); color: var(--navy); cursor: pointer; transition: opacity .2s, transform .15s; }
+    .submit-btn:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+    .submit-btn:disabled { opacity: .5; cursor: default; }
+
+    .saved-alert { display: none; background: rgba(46,125,103,.2); border: 1px solid var(--contralto2); border-radius: 8px; padding: .8rem 1.2rem; margin-top: 1rem; font-family: 'Josefin Sans', sans-serif; font-size: .82rem; color: var(--contralto2); letter-spacing: .05em; }
+    .error-alert { display: none; background: rgba(181,69,27,.2); border: 1px solid var(--baritono2); border-radius: 8px; padding: .8rem 1.2rem; margin-top: 1rem; font-family: 'Josefin Sans', sans-serif; font-size: .82rem; color: var(--baritono2); letter-spacing: .05em; }
+
+    /* ══════════════════════════════════
+       PROGRESO DEL GRUPO
+    ══════════════════════════════════ */
+    .progress-section { margin-top: 2.5rem; }
+    .prog-title { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 600; color: var(--cream); margin-bottom: 1.2rem; }
+    .prog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .prog-card { border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem; background: var(--card-bg); }
+    .prog-name { font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; font-weight: 600; color: var(--cream); margin-bottom: .3rem; }
+    .prog-reg-label { font-family: 'Josefin Sans', sans-serif; font-size: .62rem; letter-spacing: .15em; text-transform: uppercase; margin-bottom: .8rem; }
+    .prog-bar-wrap { background: rgba(255,255,255,.07); border-radius: 100px; height: 6px; overflow: hidden; }
+    .prog-bar { height: 100%; border-radius: 100px; transition: width .6s ease; }
+    .mezzo-bar     { background: linear-gradient(90deg,var(--mezzo),var(--mezzo2)); }
+    .contralto-bar { background: linear-gradient(90deg,var(--contralto),var(--contralto2)); }
+    .baritono-bar  { background: linear-gradient(90deg,var(--baritono),var(--baritono2)); }
+    .prog-pct { font-family: 'Josefin Sans', sans-serif; font-size: .7rem; letter-spacing: .05em; color: var(--muted); margin-top: .4rem; }
+
+    /* Indicador de estado de conexión */
+    .db-status { display: inline-flex; align-items: center; gap: .4rem; font-family: 'Josefin Sans', sans-serif; font-size: .65rem; letter-spacing: .12em; text-transform: uppercase; padding: .3rem .8rem; border-radius: 100px; margin-bottom: 1.2rem; }
+    .db-status.ok   { background: rgba(46,125,103,.2); color: var(--contralto2); border: 1px solid rgba(128,203,183,.3); }
+    .db-status.err  { background: rgba(181,69,27,.2);  color: var(--baritono2);  border: 1px solid rgba(240,139,106,.3); }
+    .db-status.wait { background: rgba(201,168,76,.1);  color: var(--gold2);      border: 1px solid rgba(201,168,76,.2); }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .ok   .status-dot { background: var(--contralto2); }
+    .err  .status-dot { background: var(--baritono2); }
+    .wait .status-dot { background: var(--gold2); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+
+    footer { text-align: center; padding: 3rem 1rem; font-family: 'Josefin Sans', sans-serif; font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; color: rgba(160,176,194,.4); }
+
+    /* ══ EJERCICIOS ══ */
+    .ejercicio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 1.2rem; }
+    .ejercicio-card { border: 1px solid var(--border); border-radius: 14px; background: var(--card-bg); padding: 1.6rem; backdrop-filter: blur(4px); }
+    .ejercicio-num { font-family: 'Josefin Sans',sans-serif; font-size: .6rem; letter-spacing: .25em; text-transform: uppercase; color: var(--gold); margin-bottom: .4rem; }
+    .ejercicio-name { font-family: 'Cormorant Garamond',serif; font-size: 1.3rem; font-weight: 600; color: var(--cream); margin-bottom: .2rem; }
+    .ejercicio-dur { font-family: 'Josefin Sans',sans-serif; font-size: .7rem; letter-spacing: .08em; color: var(--muted); margin-bottom: .9rem; }
+    .ejercicio-steps { font-size: .86rem; line-height: 1.75; color: #b8c8d8; margin-bottom: 1.2rem; padding-left: 1rem; }
+    .ejercicio-steps li { margin-bottom: .35rem; }
+    .timer-display { font-family: 'Cormorant Garamond',serif; font-size: 3rem; font-weight: 300; color: var(--gold2); text-align: center; margin: .5rem 0; letter-spacing: .05em; line-height: 1; }
+    .timer-bar-wrap { background: rgba(255,255,255,.07); border-radius: 100px; height: 5px; overflow: hidden; margin-bottom: .9rem; }
+    .timer-bar { height: 100%; border-radius: 100px; background: linear-gradient(90deg,var(--gold),var(--gold2)); transition: width .9s linear; }
+    .timer-btns { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; }
+    .timer-btn { font-family: 'Josefin Sans',sans-serif; font-size: .68rem; letter-spacing: .15em; text-transform: uppercase; padding: .5rem 1.2rem; border-radius: 100px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: all .2s; }
+    .timer-btn.primary { background: var(--gold); color: var(--navy); border-color: var(--gold); font-weight: 700; }
+    .timer-btn:hover:not(.primary) { border-color: var(--gold); color: var(--gold); }
+    .timer-btn.primary:hover { opacity: .88; }
+    .timer-done { display: none; text-align: center; font-family: 'Josefin Sans',sans-serif; font-size: .75rem; letter-spacing: .1em; color: var(--contralto2); margin-top: .5rem; }
+
+    /* ══ PIANO VISUALIZADOR ══ */
+    .piano-outer { overflow-x: auto; padding: 1.5rem 0 1rem; }
+    .piano-zones { position: relative; display: flex; min-width: 640px; height: 18px; margin-bottom: 6px; }
+    .zone-bar { position: absolute; height: 100%; border-radius: 4px; opacity: .7; display: flex; align-items: center; padding: 0 6px; }
+    .zone-bar span { font-family: 'Josefin Sans',sans-serif; font-size: .55rem; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; font-weight: 700; }
+    .piano { display: flex; position: relative; min-width: 640px; height: 130px; }
+    .pkey { position: relative; cursor: pointer; transition: filter .08s, transform .08s; user-select: none; flex-shrink: 0; }
+    .pkey.white { width: 34px; height: 130px; background: #e8e0d0; border: 1px solid rgba(0,0,0,.25); border-radius: 0 0 5px 5px; z-index: 1; }
+    .pkey.black { width: 22px; height: 80px; background: #1a1a2e; border: 1px solid rgba(255,255,255,.1); border-radius: 0 0 4px 4px; z-index: 2; margin-left: -11px; margin-right: -11px; }
+    .pkey:active { filter: brightness(.75); transform: translateY(2px); }
+    .pkey-note { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); font-family: 'Josefin Sans',sans-serif; font-size: .45rem; letter-spacing: .03em; text-align: center; pointer-events: none; color: rgba(0,0,0,.4); line-height: 1.2; }
+    .pkey.black .pkey-note { color: rgba(255,255,255,.35); bottom: 4px; }
+    .pkey.white.mezzo-zone   { background: rgba(179,157,219,.45); }
+    .pkey.white.contralto-zone { background: rgba(128,203,183,.4); }
+    .pkey.white.baritono-zone  { background: rgba(240,139,106,.4); }
+    .pkey.white.multi-zone   { background: linear-gradient(180deg, rgba(179,157,219,.3) 0%, rgba(128,203,183,.3) 100%); }
+    .piano-legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.4rem; justify-content: center; }
+    .legend-item { display: flex; align-items: center; gap: .5rem; font-family: 'Josefin Sans',sans-serif; font-size: .72rem; letter-spacing: .1em; color: var(--muted); }
+    .legend-dot { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+    .playing-note { text-align: center; font-family: 'Cormorant Garamond',serif; font-size: 1.4rem; color: var(--gold2); min-height: 2rem; margin-top: .8rem; transition: opacity .3s; }
+
+    /* ══ MURO ══ */
+    .muro-form { border: 1px solid var(--border); border-radius: 14px; background: var(--card-bg); padding: 1.6rem; margin-bottom: 2rem; backdrop-filter: blur(4px); }
+    .muro-msg { border-left: 3px solid var(--border); padding: .9rem 1rem .9rem 1.3rem; margin-bottom: 1rem; background: var(--card-bg); border-radius: 0 10px 10px 0; transition: border-color .2s; }
+    .muro-msg.mezzo-msg     { border-left-color: var(--mezzo2); }
+    .muro-msg.contralto-msg { border-left-color: var(--contralto2); }
+    .muro-msg.baritono-msg  { border-left-color: var(--baritono2); }
+    .muro-msg-name { font-family: 'Cormorant Garamond',serif; font-size: 1rem; font-weight: 600; color: var(--cream); margin-bottom: .15rem; }
+    .muro-msg-text { font-size: .88rem; color: #c9d4e0; line-height: 1.7; margin-bottom: .35rem; }
+    .muro-msg-meta { font-family: 'Josefin Sans',sans-serif; font-size: .62rem; letter-spacing: .1em; color: var(--muted); }
+
+    /* ══ BITÁCORA ══ */
+    .sesion-card { border: 1px solid var(--border); border-radius: 14px; background: var(--card-bg); padding: 1.6rem; margin-bottom: 1.2rem; backdrop-filter: blur(4px); }
+    .sesion-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+    .sesion-fecha { font-family: 'Josefin Sans',sans-serif; font-size: .65rem; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); margin-bottom: .2rem; }
+    .sesion-tema { font-family: 'Cormorant Garamond',serif; font-size: 1.3rem; font-weight: 600; color: var(--cream); }
+    .notas-lista { margin-top: .8rem; }
+    .nota-item { font-size: .84rem; color: #b8c8d8; line-height: 1.65; padding: .5rem 0; border-bottom: 1px solid rgba(201,168,76,.08); }
+    .nota-item:last-child { border-bottom: none; }
+    .nota-autor { font-family: 'Josefin Sans',sans-serif; font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; margin-bottom: .2rem; }
+    .admin-session-form { border: 1px solid rgba(181,69,27,.3); border-radius: 12px; background: rgba(181,69,27,.05); padding: 1.4rem; margin-bottom: 1.5rem; }
+
+    @media (max-width: 600px) {
+      .tab-btn { font-size: .65rem; padding: .45rem 1rem; }
+      .registro-card, .ficha-container { padding: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="notes-bg" id="notesBg"></div>
+
+<div class="wrapper">
+
+  <!-- ══════════ HERO ══════════ -->
+  <header class="hero">
+    <div class="hero-label">Canto Cristiano Evangélico — Guía Vocal</div>
+    <h1>Descubre Tu Voz,<br><em>Descubre Tu Llamado</em></h1>
+    <p class="hero-subtitle">
+      Una guía práctica para que cada integrante conozca, comprenda y desarrolle conscientemente su registro vocal como instrumento de adoración.
+    </p>
+    <div class="hero-divider"></div>
+  </header>
+
+  <!-- ══════════ NAVEGACIÓN ══════════ -->
+  <nav class="nav-tabs">
+    <button class="tab-btn active" onclick="showPage('registros',this)">Los Registros</button>
+    <button class="tab-btn" onclick="showPage('integrantes',this)">Integrantes</button>
+    <button class="tab-btn" onclick="showPage('artistas',this)">Artistas Referentes</button>
+    <button class="tab-btn" onclick="showPage('ficha',this)">Mi Ficha de Evaluación</button>
+    <button class="tab-btn" onclick="showPage('progreso',this)">Progreso del Grupo</button>
+    <button class="tab-btn" onclick="showPage('ejercicios',this)">Ejercicios ♩</button>
+    <button class="tab-btn" onclick="showPage('piano',this)">Mi Registro en el Piano</button>
+    <button class="tab-btn" onclick="showPage('bitacora',this)">Bitácora de Ensayo</button>
+    <button class="tab-btn" onclick="showPage('muro',this)">El Muro del Grupo</button>
+  </nav>
+
+  <!-- ═══════════════════════════════════════
+       PÁGINA 1 — LOS REGISTROS
+  ═══════════════════════════════════════ -->
+  <section class="page active" id="page-registros">
+
+    <h2 class="section-title">¿Qué es un Registro Vocal?</h2>
+    <p class="section-desc">
+      El registro vocal no es una restricción — es la identidad de tu instrumento. Es la zona del pentagrama donde tu voz vibra de manera natural, sin esfuerzo, con plenitud de color y sonido. Conocer tu registro te permite cantar con libertad, proteger tu voz y expresar la adoración desde tu lugar genuino.
+    </p>
+
+    <!-- MEZZO-SOPRANO -->
+    <div class="registro-card mezzo">
+      <div class="reg-badge">Registro Femenino — Medio</div>
+      <div class="reg-title">Mezzo-Soprano</div>
+      <div class="reg-range">Rango aproximado: La 2 – La 5 &nbsp;·&nbsp; Zona de mayor confort: Mi 3 – Mi 5</div>
+      <div class="reg-body">
+        <p>La palabra <strong>"mezzo"</strong> proviene del italiano y significa <em>medio</em>. Una mezzo-soprano es, literalmente, la voz femenina del centro: no es la voz más aguda (esa es la soprano) ni la más grave (esa es la contralto), sino el punto de equilibrio entre ambas. Y ese punto central es precisamente donde reside su mayor poder.</p>
+        <p>Mientras la soprano brilla con facilidad en los agudos, la mezzo-soprano posee algo que la soprano no puede imitar: <strong>cuerpo, peso y calidez en el registro medio</strong>. Cuando una mezzo canta en su zona natural, la voz suena redonda, llena y expresiva sin necesitar esfuerzo. Hay una textura cálida — casi como madera pulida — que es reconocible al instante.</p>
+        <p>En el canto de adoración, la mezzo cumple un rol <strong>armónico fundamental</strong>: aporta la segunda voz, sostiene la armonía cuando las sopranos suben, y llena ese espacio medio que hace que el sonido del grupo sea completo y rico. Sin la mezzo, el canto suena delgado aunque sea perfecto en los extremos.</p>
+        <p><strong>¿Cómo reconocerla en ti misma?</strong> Si al cantar notas que tu voz suena más "llena" y cómoda en las notas medias que en las muy altas, y si los agudos extremos te exigen esfuerzo mientras el rango medio fluye naturalmente, tienes un registro mezzo. Tu zona de confort es tu fortaleza — no intentes abandonarla buscando agudos que no te pertenecen.</p>
+      </div>
+      <div class="concepto-mini">
+        <div class="concepto-mini-item"><div class="concepto-mini-label">Timbre</div>Cálido, redondo, con peso natural. Suena como madera o terciopelo, nunca metálico.</div>
+        <div class="concepto-mini-item"><div class="concepto-mini-label">Zona de confort</div>Notas del medio-alto del pentagrama. Ni los agudos extremos ni los graves profundos.</div>
+        <div class="concepto-mini-item"><div class="concepto-mini-label">Rol en el canto</div>Segunda voz, armonía media, sostén del conjunto coral.</div>
+        <div class="concepto-mini-item"><div class="concepto-mini-label">Fortaleza única</div>Expresividad emocional intensa, dinámica amplia, pianissimos con cuerpo.</div>
+      </div>
+      <div class="reg-traits">
+        <span class="trait">Cálida</span><span class="trait">Redonda</span><span class="trait">Media potente</span><span class="trait">Expresiva</span><span class="trait">Ancla armónica</span><span class="trait">Íntima</span>
+      </div>
+    </div>
+
+    <!-- CONTRALTO -->
+    <div class="registro-card contralto">
+      <div class="reg-badge">Registro Femenino — El Más Profundo</div>
+      <div class="reg-title">Contralto</div>
+      <div class="reg-range">Rango aproximado: Fa 2 – Fa 5 &nbsp;·&nbsp; Zona de mayor confort: Sol 2 – Re 4</div>
+      <div class="reg-body">
+        <p>La contralto es el registro femenino más grave y, al mismo tiempo, el <strong>más raro en la naturaleza</strong>. En el mundo del canto clásico se dice que una contralto verdadera es un regalo — aparece pocas veces, y cuando lo hace, transforma completamente el sonido de un conjunto. Es el tesoro más escaso del coro.</p>
+        <p>Su zona de comodidad está en las notas bajas y medio-bajas, donde la voz produce un color que los demás registros simplemente no pueden generar: <strong>oscuro, aterciopelado, profundo, con una resonancia que se siente en el pecho</strong>. Cuando una contralto canta en su registro correcto, parece que la voz no viene de la garganta sino del centro del cuerpo.</p>
+        <p>En la adoración, la contralto cumple un rol <strong>arquitectónico</strong>: es la base sobre la que se construyen todas las voces superiores. Cuando el grupo canta y la contralto está bien ubicada en su registro, el sonido del conjunto adquiere una solidez y profundidad que transforma la experiencia de adoración.</p>
+        <p><strong>¿Cómo reconocerla en ti misma?</strong> Si notas que tu voz produce notas más graves que la mayoría de las mujeres, si las notas bajas suenan naturales y con cuerpo en lugar de "huecas", y si las notas muy agudas te resultan poco naturales o forzadas, tienes un registro contralto. No intentes sonar como una mezzo — tu oscuridad es tu mayor regalo.</p>
+      </div>
+      <div class="concepto-mini">
+        <div class="concepto-mini-item"><div class="concepto-mini-label">Timbre</div>Oscuro, aterciopelado y profundo. Se siente en el pecho, no en la garganta.</div>
+        <div class="concepto-mini-item"><div class="concepto-mini-label">Zona de confort</div>Notas bajas y medio-bajas donde otras voces ya no llegan con cuerpo.</div>
+        <div class="concepto-mini-item"><div class="concepto-mini-label">Rol en el canto</div>Base armónica, fundamento del grupo. Sin contralto, el canto pierde tierra.</div>
+        <div class="concepto-mini-item"><div class="concepto-mini-label">Fortaleza única</div>Profundidad que ningún otro registro puede alcanzar. Rara y extraordinaria.</div>
+      </div>
+      <div class="reg-traits">
+        <span class="trait">Profunda</span><span class="trait">Aterciopelada</span><span class="trait">Oscura</span><span class="trait">Base armónica</span><span class="trait">Excepcional</span><span class="trait">Poderosa en graves</span>
+      </div>
+    </div>
+
+    <!-- BARÍTONO -->
+    <div class="registro-card baritono">
+      <div class="reg-badge">Registro Masculino — Medio</div>
+      <div class="reg-title">Barítono</div>
+      <div class="reg-range">Rango aproximado: Sol 1 – Sol 4 &nbsp;·&nbsp; Zona de mayor confort: Si 1 – Mi 4</div>
+      <div class="reg-body">
+        <p>El barítono es el registro masculino más común y, por esa razón, también el más versátil. Se ubica entre el bajo (la voz masculina más grave) y el tenor (la voz masculina más aguda), tomando lo mejor de los dos: <strong>la calidez y profundidad del bajo, combinada con la claridad y proyección del tenor</strong>. El resultado es una voz que comunica autoridad natural, presencia y equilibrio.</p>
+        <p>La mayor riqueza del barítono está en su rango medio. Cuando un barítono canta en su zona de confort natural, su voz tiene un <strong>peso particular</strong> — no es ligero como el tenor ni tan profundo como el bajo, sino equilibradamente sólido. Hay una redondez en sus notas medias que da dirección y liderazgo al sonido del grupo.</p>
+        <p>En la adoración, el barítono funciona como el <strong>núcleo de la voz masculina</strong>: da dirección melódica, puede llevar la voz principal sin sonar forzado en extremos, y conecta naturalmente con las voces femeninas creando un tejido armónico completo.</p>
+        <p><strong>¿Cómo reconocerlo en ti mismo?</strong> Si tu voz se siente más cómoda en un rango intermedio — ni tan grave como para ser un bajo ni tan aguda como para ser un tenor — y si notas que tienes calidez y cuerpo en las notas medias con facilidad, tienes una voz barítona. Tu fortaleza real está en el centro, no en alcanzar agudos de tenor.</p>
+      </div>
+      <div class="concepto-mini">
+        <div class="concepto-mini-item"><div class="concepto-mini-label">Timbre</div>Cálido, equilibrado, con peso natural. Autoridad sin necesitar llegar a extremos.</div>
+        <div class="concepto-mini-item"><div class="concepto-mini-label">Zona de confort</div>Rango medio masculino. El centro entre el bajo grave y el tenor agudo.</div>
+        <div class="concepto-mini-item"><div class="concepto-mini-label">Rol en el canto</div>Núcleo masculino, liderazgo melódico, puente entre voces graves y femeninas.</div>
+        <div class="concepto-mini-item"><div class="concepto-mini-label">Fortaleza única</div>Versatilidad y presencia. Puede lo que el bajo no alcanza y lo que el tenor fuerza.</div>
+      </div>
+      <div class="reg-traits">
+        <span class="trait">Autoritario</span><span class="trait">Cálido</span><span class="trait">Versátil</span><span class="trait">Núcleo masculino</span><span class="trait">Presencia</span><span class="trait">Equilibrado</span>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       PÁGINA 2 — INTEGRANTES
+  ═══════════════════════════════════════ -->
+  <section class="page" id="page-integrantes">
+    <h2 class="section-title">Nuestros Integrantes</h2>
+    <p class="section-desc">Cada voz es única e irremplazable en el tejido armónico del grupo. Aquí el registro asignado a cada miembro del canto.</p>
+    <div class="members-grid" id="membersGrid"></div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       PÁGINA 3 — ARTISTAS REFERENTES
+  ═══════════════════════════════════════ -->
+  <section class="page" id="page-artistas">
+    <h2 class="section-title">Artistas Referentes</h2>
+    <p class="section-desc">Artistas cristianos seleccionados porque su registro vocal es equivalente al tuyo. Escúchalos con atención a los puntos señalados — no para copiarlos, sino para reconocerte en ellos.</p>
+
+    <!-- ── MEZZO ── -->
+    <div class="artist-section">
+      <div class="artist-section-title"><span class="artist-dot mezzo-dot"></span>Referentes — Mezzo-Soprano</div>
+
+      <div class="artist-card">
+        <div class="artist-name">Lauren Daigle</div>
+        <div class="artist-tag">Pop Cristiano Contemporáneo · EE.UU.</div>
+        <div class="artist-why">El referente mezzo más accesible y moderno. Su voz habita cómodamente el registro medio-alto sin esfuerzo, y es magistral en el uso del cuerpo vocal: no fuerza los agudos, sino que los deja llegar. Su técnica de respiración es un modelo de lo que una mezzo puede lograr sin tensión.</div>
+        <div class="songs-title">Canciones recomendadas</div>
+        <div class="songs-list"><span class="song-pill">You Say</span><span class="song-pill">Trust in You</span><span class="song-pill">Hold On To Me</span><span class="song-pill">First</span></div>
+        <div class="listen-points">
+          <div class="listen-points-title">Puntos de escucha activa</div>
+          <div class="listen-point">En "You Say" observa cómo el primer verso es suave y casi hablado — la mezzo no necesita empezar fuerte para ser expresiva.</div>
+          <div class="listen-point">En el pre-coro, nota cómo la voz "se expande" hacia el medio sin saltar a falsete ni gritar.</div>
+          <div class="listen-point">Presta atención al color de su voz en las notas de reposo: ¿reconoces ese mismo color cálido en tu propia voz?</div>
+          <div class="listen-point">En "Trust in You" escucha la dinámica: sube y baja de volumen manteniendo el mismo color. Eso es control de mezzo.</div>
+        </div>
+      </div>
+
+      <div class="artist-card">
+        <div class="artist-name">Christine D'Clario</div>
+        <div class="artist-tag">Adoración Contemporánea Hispana · Chile / EE.UU.</div>
+        <div class="artist-why">La referente hispana más importante para una mezzo en adoración. Combina la calidez del registro medio con una expresividad emocional muy desarrollada. Es ideal para quienes cantarán en español, porque la dicción, el fraseo y las dinámicas son directamente aplicables.</div>
+        <div class="songs-title">Canciones recomendadas</div>
+        <div class="songs-list"><span class="song-pill">Santo</span><span class="song-pill">Eres Todo</span><span class="song-pill">Quiero Conocerte Más</span><span class="song-pill">Cuán Grande es Él</span></div>
+        <div class="listen-points">
+          <div class="listen-points-title">Puntos de escucha activa</div>
+          <div class="listen-point">En "Santo" escucha los puentes — su voz nunca pierde la redondez de la mezzo, incluso en las partes más intensas.</div>
+          <div class="listen-point">En "Eres Todo" observa el vibrato natural: no es un ornamento añadido, es la relajación de la voz bien apoyada.</div>
+          <div class="listen-point">Compara el color de su voz con el de una soprano — escucha la diferencia de peso y calidez. Ese peso es tu registro.</div>
+        </div>
+      </div>
+
+      <div class="artist-card">
+        <div class="artist-name">Marcela Gandara</div>
+        <div class="artist-tag">Adoración Lírica Hispana · México</div>
+        <div class="artist-why">Representa la cara más lírica y suave de la mezzo en adoración. Delicada sin perder cuerpo, muestra cómo este registro puede ser íntimo y poderoso al mismo tiempo. Especialmente útil para quienes tienden a esforzarse demasiado — enseña que menos tensión produce más belleza.</div>
+        <div class="songs-title">Canciones recomendadas</div>
+        <div class="songs-list"><span class="song-pill">Todo Lo Que Soy</span><span class="song-pill">Ven a Mí</span><span class="song-pill">Buscarte</span><span class="song-pill">Me Acerco a Ti</span></div>
+        <div class="listen-points">
+          <div class="listen-points-title">Puntos de escucha activa</div>
+          <div class="listen-point">En "Todo Lo Que Soy" escucha los pianissimos — nota cómo incluso en su voz más quieta hay cuerpo y color. Eso es la mezzo.</div>
+          <div class="listen-point">Observa que no "empuja" la voz hacia arriba. Deja que flote, y eso produce más emoción que cualquier grito.</div>
+          <div class="listen-point">Pon atención a cómo respira entre frases — la preparación es parte de la canción.</div>
+        </div>
+      </div>
+
+      <div class="artist-card">
+        <div class="artist-name">Tasha Cobbs Leonard</div>
+        <div class="artist-tag">Gospel Contemporáneo · EE.UU.</div>
+        <div class="artist-why">Representa la mezzo en su expresión más poderosa y gospel. Para quienes quieren desarrollar potencia sin perder el registro, ella es el modelo perfecto. Su capacidad de transitar desde una voz hablada hasta una entrega emocional completa demuestra el rango dinámico completo de la mezzo.</div>
+        <div class="songs-title">Canciones recomendadas</div>
+        <div class="songs-list"><span class="song-pill">Fill Me Up</span><span class="song-pill">You Know My Name</span><span class="song-pill">I'm Getting Ready</span><span class="song-pill">Break Every Chain</span></div>
+        <div class="listen-points">
+          <div class="listen-points-title">Puntos de escucha activa</div>
+          <div class="listen-point">En "Fill Me Up" escucha cómo la voz empieza casi hablada y gradualmente se eleva — eso es construcción dinámica consciente.</div>
+          <div class="listen-point">Observa los momentos de máxima intensidad: ¿suena la voz tensa o abierta? La buena técnica hace que la potencia suene libre, no forzada.</div>
+          <div class="listen-point">Presta atención a la zona donde su voz "resuena" con más fuerza — ese es el núcleo mezzo que debes encontrar en tu propia voz.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CONTRALTO ── -->
+    <div class="artist-section">
+      <div class="artist-section-title"><span class="artist-dot contralto-dot"></span>Referentes — Contralto</div>
+
+      <div class="artist-card">
+        <div class="artist-name">Yolanda Adams</div>
+        <div class="artist-tag">Gospel Clásico y Contemporáneo · EE.UU.</div>
+        <div class="artist-why">Posiblemente la contralto cristiana más completa de todos los tiempos. Combina profundidad grave extraordinaria con una técnica impecable. Para una contralto que quiere entender su potencial completo, escuchar a Yolanda es obligatorio.</div>
+        <div class="songs-title">Canciones recomendadas</div>
+        <div class="songs-list"><span class="song-pill">Open My Heart</span><span class="song-pill">Be Still</span><span class="song-pill">Victory</span><span class="song-pill">I Believe</span></div>
+        <div class="listen-points">
+          <div class="listen-points-title">Puntos de escucha activa</div>
+          <div class="listen-point">En "Open My Heart" escucha el intro — su voz en el registro más bajo tiene un color oscuro y denso que es la esencia de la contralto.</div>
+          <div class="listen-point">En las notas más bajas, nota que su voz no suena "hueca" ni débil: hay resonancia de pecho. Eso es lo que debes buscar en tu propia voz.</div>
+          <div class="listen-point">Observa cómo no intenta sonar como una mezzo — abraza su oscuridad tímbrica, y eso la hace única.</div>
+          <div class="listen-point">En "Be Still" presta atención a la suavidad: una contralto puede ser profunda y delicada al mismo tiempo.</div>
+        </div>
+      </div>
+
+      <div class="artist-card">
+        <div class="artist-name">CeCe Winans</div>
+        <div class="artist-tag">Gospel Contemporáneo · EE.UU.</div>
+        <div class="artist-why">Muestra la contralto en su expresión contemporánea: cálida, íntima y con una profundidad que no necesita gritar para impactar. Ideal para entender que la contralto puede ser el centro emocional de una canción sin necesitar los agudos de otros registros.</div>
+        <div class="songs-title">Canciones recomendadas</div>
+        <div class="songs-list"><span class="song-pill">Goodness of God</span><span class="song-pill">Believe For It</span><span class="song-pill">Never Lost</span><span class="song-pill">That's My King</span></div>
+        <div class="listen-points">
+          <div class="listen-points-title">Puntos de escucha activa</div>
+          <div class="listen-point">En "Goodness of God" escucha el verso inicial — la profundidad de su voz crea una atmósfera inmediata. Ese es el regalo de la contralto.</div>
+          <div class="listen-point">Observa que no "cubre" su timbre oscuro — lo usa como su mayor fortaleza, especialmente en las frases más lentas.</div>
+          <div class="listen-point">Compara la zona donde su voz suena más natural con la tuya. ¿Coincide en el rango bajo-medio? Esa zona de coincidencia es donde debes vivir.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BARÍTONO ── -->
+    <div class="artist-section">
+      <div class="artist-section-title"><span class="artist-dot baritono-dot"></span>Referentes — Barítono</div>
+
+      <div class="artist-card">
+        <div class="artist-name">Jesús Adrián Romero</div>
+        <div class="artist-tag">Adoración Contemporánea Hispana · México</div>
+        <div class="artist-why">El referente hispano más relevante para un barítono en adoración. Ha construido toda su carrera sobre las fortalezas de su registro: calidez en el medio, autoridad en las notas bajas y una musicalidad excepcional. Sus canciones están escritas exactamente en la zona de confort barítona.</div>
+        <div class="songs-title">Canciones recomendadas</div>
+        <div class="songs-list"><span class="song-pill">Nada es Imposible</span><span class="song-pill">Renuévame</span><span class="song-pill">Ven a Mí</span><span class="song-pill">Mi Universo Eres Tú</span></div>
+        <div class="listen-points">
+          <div class="listen-points-title">Puntos de escucha activa</div>
+          <div class="listen-point">En "Renuévame" escucha el color de su voz en las frases cortas — hay un peso natural que no necesita esfuerzo. Eso es el barítono en su zona.</div>
+          <div class="listen-point">Las tonalidades de sus canciones casi nunca lo llevan a extremos — él vive en el medio, y ese es exactamente el lugar del barítono.</div>
+          <div class="listen-point">En "Ven a Mí" presta atención a los momentos de susurro — la voz barítona tiene una intimidad especial en los pianos que los tenores no pueden lograr.</div>
+        </div>
+      </div>
+
+      <div class="artist-card">
+        <div class="artist-name">Don Moen</div>
+        <div class="artist-tag">Adoración Clásica Contemporánea · EE.UU.</div>
+        <div class="artist-why">Un modelo de barítono en la adoración clásica. Su voz directa y sin adornos innecesarios es ideal para entender la esencia del registro: proyección, calidez y presencia. Sus canciones lentas son particularmente útiles para estudiar el soporte vocal barítono.</div>
+        <div class="songs-title">Canciones recomendadas</div>
+        <div class="songs-list"><span class="song-pill">God Will Make a Way</span><span class="song-pill">I Will Sing</span><span class="song-pill">Thank You Lord</span><span class="song-pill">Hear Our Praises</span></div>
+        <div class="listen-points">
+          <div class="listen-points-title">Puntos de escucha activa</div>
+          <div class="listen-point">En "God Will Make a Way" escucha la línea melódica — está completamente dentro del rango de confort barítono sin subir ni bajar a extremos.</div>
+          <div class="listen-point">Nota la consistencia tímbrica: su voz suena igual de "llena" en el primer verso que en el último. Eso viene de apoyo correcto, no de esfuerzo.</div>
+          <div class="listen-point">Compara la zona donde su voz resuena con fuerza natural versus cuando debe esforzarse — esa comparación te enseñará dónde está tu zona de confort.</div>
+        </div>
+      </div>
+
+      <div class="artist-card">
+        <div class="artist-name">Marcos Witt</div>
+        <div class="artist-tag">Adoración y Alabanza Hispana · México / EE.UU.</div>
+        <div class="artist-why">Muestra la versatilidad del barítono en géneros variados de adoración. Sus tonalidades naturales revelan claramente las características baritonales: plenitud en el medio, autoridad natural y presencia que ancla la adoración congregacional.</div>
+        <div class="songs-title">Canciones recomendadas</div>
+        <div class="songs-list"><span class="song-pill">Cuán Bello es el Señor</span><span class="song-pill">Quiero Levantar mis Manos</span><span class="song-pill">Supe Que me Amabas</span><span class="song-pill">Levántate y Sálvame</span></div>
+        <div class="listen-points">
+          <div class="listen-points-title">Puntos de escucha activa</div>
+          <div class="listen-point">En "Cuán Bello es el Señor" observa el peso y la plenitud en el coro — esa densidad media es la firma del barítono.</div>
+          <div class="listen-point">Cuando sube a notas más agudas, nota si la voz "cambia de color" — esa transición te ayudará a identificar los límites de tu zona de confort.</div>
+          <div class="listen-point">Presta atención a cómo lidera sin necesitar ser el más alto en volumen — la autoridad barítona es de presencia, no de volumen.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       PÁGINA 4 — FICHA DE EVALUACIÓN
+  ═══════════════════════════════════════ -->
+  <section class="page" id="page-ficha">
+    <h2 class="section-title">Mi Ficha de Evaluación Vocal</h2>
+    <p class="section-desc">
+      Completa esta ficha después de escuchar a tu artista referente. Tu evaluación se guardará en la base de datos compartida y el grupo podrá ver el progreso en tiempo real. Usa los botones <strong style="color:var(--gold2)">♩</strong> para refrescar conceptos.
+    </p>
+
+    <!-- Indicador de estado de conexión con Supabase -->
+    <div class="db-status wait" id="dbStatus">
+      <span class="status-dot"></span> Conectando con la base de datos...
+    </div>
+
+    <div class="ficha-container">
+
+      <label class="ficha-select-label">¿Quién completa esta ficha?</label>
+      <select id="fichaPersona">
+        <option value="">— Selecciona tu nombre —</option>
+        <option value="Ruth Abreu">Ruth Abreu · Mezzo-Soprano</option>
+        <option value="Lorena Méndez">Lorena Méndez · Mezzo-Soprano</option>
+        <option value="Camila Caraballo">Camila Caraballo · Mezzo-Soprano</option>
+        <option value="Rachel Benua">Rachel Benua · Mezzo-Soprano</option>
+        <option value="Hellen Williams">Hellen Williams · Mezzo-Soprano</option>
+        <option value="Yeni Santana">Yeni Santana · Contralto</option>
+        <option value="Yalma Barreto">Yalma Barreto · Contralto</option>
+        <option value="Esteban Méndez">Esteban Méndez · Barítono</option>
+      </select>
+
+      <label class="ficha-select-label">Artista evaluado hoy</label>
+      <select id="fichaArtista">
+        <option value="">— Selecciona el artista —</option>
+        <option>Lauren Daigle</option><option>Christine D'Clario</option>
+        <option>Marcela Gandara</option><option>Tasha Cobbs Leonard</option>
+        <option>Yolanda Adams</option><option>CeCe Winans</option>
+        <option>Jesús Adrián Romero</option><option>Don Moen</option><option>Marcos Witt</option>
+      </select>
+
+      <label class="ficha-select-label">Canción escuchada</label>
+      <input type="text" id="fichaCancion" placeholder="Escribe el nombre de la canción..."/>
+
+      <hr class="ficha-hr">
+
+      <!-- PREGUNTA 1 -->
+      <div class="concepto-group">
+        <label class="ficha-question">1. ¿Dónde "descansa" la voz del artista?</label>
+        <p class="ficha-hint">¿En los graves, en el medio, o en los agudos? ¿Dónde suena más cómoda y natural?</p>
+        <div class="concepto-btns-row">
+          <button class="concepto-btn" onclick="toggleConcepto('c-registro',this)">♩ ¿Qué son los registros? <span class="arrow">▾</span></button>
+          <button class="concepto-btn" onclick="toggleConcepto('c-zona',this)">♩ ¿Qué es la zona de confort? <span class="arrow">▾</span></button>
+        </div>
+        <div class="concepto-panel" id="c-registro">
+          <div class="cp-title">Los Registros Vocales</div>
+El <strong>registro vocal</strong> es la zona del pentagrama donde tu voz vibra de forma natural, sin esfuerzo y con plenitud de sonido. Hay tres grandes zonas:
+
+• <strong>Graves:</strong> Notas más bajas. Suenan con resonancia en el pecho. Zona fuerte de la contralto y el barítono.
+• <strong>Medio:</strong> Notas centrales. La voz suena más "llena" y cómoda. Hogar de la mezzo-soprano.
+• <strong>Agudos:</strong> Notas más altas. Requieren mayor técnica. Territorio natural de la soprano.
+
+Cuando escuchas al artista, pregúntate: ¿en cuál de estas zonas parece estar más "en casa" su voz?
+        </div>
+        <div class="concepto-panel" id="c-zona">
+          <div class="cp-title">Zona de Confort Vocal</div>
+La <strong>zona de confort</strong> es ese rango específico de notas donde la voz suena más natural, rica y sin esfuerzo visible. Es como el idioma nativo de la voz — ahí todo fluye, hay color, hay cuerpo, hay expresión sin forzar nada.
+
+Cuando el artista entra en su zona de confort lo notarás porque: la voz se vuelve más redonda, la respiración parece más tranquila, y hay una riqueza de timbre que no estaba antes. Esa es la señal.
+        </div>
+        <textarea id="q1" placeholder="Ejemplo: Su voz descansa cómodamente en el registro medio, especialmente en las notas del coro..."></textarea>
+      </div>
+
+      <!-- PREGUNTA 2 -->
+      <div class="concepto-group">
+        <label class="ficha-question">2. ¿Qué palabras describen el color de esa voz?</label>
+        <p class="ficha-hint">Piensa en texturas, temperaturas, sensaciones... no hay respuesta incorrecta.</p>
+        <div class="concepto-btns-row">
+          <button class="concepto-btn" onclick="toggleConcepto('c-timbre',this)">♩ ¿Qué es el timbre o color vocal? <span class="arrow">▾</span></button>
+        </div>
+        <div class="concepto-panel" id="c-timbre">
+          <div class="cp-title">El Timbre — El Color de la Voz</div>
+El <strong>timbre</strong> es lo que hace que dos personas cantando la misma nota suenen completamente diferente. Es la firma única de cada voz:
+
+• <strong>Cálido:</strong> Como madera, cercano, envolvente. Típico de la mezzo.
+• <strong>Oscuro:</strong> Con peso y profundidad, como terciopelo. Típico de la contralto.
+• <strong>Brillante:</strong> Claro, con filo, se proyecta fácilmente. Típico de la soprano.
+• <strong>Redondo:</strong> Sin aristas, suave, lleno. Presente en barítonos bien apoyados.
+• <strong>Metálico:</strong> Duro, penetrante, con mucho filo.
+
+No existe un timbre "mejor" — cada uno corresponde a un registro y tiene su función.
+        </div>
+        <textarea id="q2" placeholder="Ejemplo: Cálida, oscura, redonda, aterciopelada, brillante..."></textarea>
+      </div>
+
+      <!-- PREGUNTA 3 -->
+      <div class="concepto-group">
+        <label class="ficha-question">3. ¿En qué momento reconociste algo de tu propia voz?</label>
+        <p class="ficha-hint">El instante en que pensaste: "yo también hago eso" o "yo también siento eso ahí".</p>
+        <div class="concepto-btns-row">
+          <button class="concepto-btn" onclick="toggleConcepto('c-resonancia',this)">♩ ¿Qué es la resonancia? <span class="arrow">▾</span></button>
+          <button class="concepto-btn" onclick="toggleConcepto('c-apoyo',this)">♩ ¿Qué es el apoyo vocal? <span class="arrow">▾</span></button>
+        </div>
+        <div class="concepto-panel" id="c-resonancia">
+          <div class="cp-title">La Resonancia</div>
+La <strong>resonancia</strong> es el fenómeno por el cual la voz se amplifica al vibrar en las cavidades del cuerpo.
+
+• <strong>Resonancia de pecho:</strong> Notas graves/medias hacen vibrar el pecho. Pon la mano en el esternón y canta una nota baja — lo sentirás.
+• <strong>Resonancia de cabeza:</strong> Notas agudas resuenan en nariz y frente. Dan brillo y proyección.
+
+Si al escuchar el artista "algo resuena en ti", es porque tu voz comparte el mismo tipo de resonancia.
+        </div>
+        <div class="concepto-panel" id="c-apoyo">
+          <div class="cp-title">El Apoyo Vocal</div>
+El <strong>apoyo vocal</strong> es el control del aire desde el diafragma mientras cantas. Es la base técnica de todo:
+
+• <strong>Sin apoyo:</strong> la voz se cansa rápido, tiembla, o pierde color al bajar el volumen.
+• <strong>Con apoyo:</strong> la voz es estable, puede ser suave Y con cuerpo al mismo tiempo, y dura más sin fatiga.
+
+Cuando el artista canta pianissimo y aún suena "lleno", eso es apoyo bien desarrollado.
+        </div>
+        <textarea id="q3" placeholder="Ejemplo: En el puente de la canción, cuando su voz bajó al registro medio, sentí que esa es exactamente mi zona natural..."></textarea>
+      </div>
+
+      <!-- PREGUNTA 4 -->
+      <div class="concepto-group">
+        <label class="ficha-question">4. ¿Qué hace ese artista que tú aún no haces pero podrías aprender?</label>
+        <p class="ficha-hint">Esta es tu meta de desarrollo. Entre más específico/a, más útil para practicar.</p>
+        <div class="concepto-btns-row">
+          <button class="concepto-btn" onclick="toggleConcepto('c-dinamica',this)">♩ ¿Qué es la dinámica vocal? <span class="arrow">▾</span></button>
+          <button class="concepto-btn" onclick="toggleConcepto('c-fraseo',this)">♩ ¿Qué es el fraseo? <span class="arrow">▾</span></button>
+        </div>
+        <div class="concepto-panel" id="c-dinamica">
+          <div class="cp-title">La Dinámica Vocal</div>
+La <strong>dinámica</strong> es la variación intencional del volumen para crear emoción:
+
+• <strong>Pianissimo (pp):</strong> Muy suave. Crea intimidad y profundidad.
+• <strong>Piano (p):</strong> Suave. Reflexivo, contemplativo.
+• <strong>Forte (f):</strong> Fuerte. Proclamación y energía.
+• <strong>Fortissimo (ff):</strong> Muy fuerte. Clímax máximo.
+
+Un cantante con buena dinámica no canta siempre al mismo volumen — sube y baja con intención.
+        </div>
+        <div class="concepto-panel" id="c-fraseo">
+          <div class="cp-title">El Fraseo Musical</div>
+El <strong>fraseo</strong> es cómo el cantante moldea una frase: dónde respira, qué palabras enfatiza, cómo conecta las notas. Es la diferencia entre cantar notas correctas y cantar con vida.
+
+Un buen fraseo hace que la letra parezca una conversación real. Pregúntate: ¿cómo trata las palabras importantes? ¿Hay un momento que te emociona más que si la melodía fuera completamente recta?
+        </div>
+        <textarea id="q4" placeholder="Ejemplo: Controlar la dinámica — puede cantar muy suave sin perder el color de su voz..."></textarea>
+      </div>
+
+      <!-- PREGUNTA 5 — ESTRELLAS -->
+      <div class="concepto-group">
+        <label class="ficha-question">5. ¿Cuánto te identificaste con este registro vocal?</label>
+        <p class="ficha-hint">1 estrella = poco identificado/a &nbsp;·&nbsp; 5 estrellas = completamente identificado/a.</p>
+        <div class="star-row" id="starRow">
+          <span class="star" data-v="1">★</span><span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span><span class="star" data-v="4">★</span><span class="star" data-v="5">★</span>
+        </div>
+      </div>
+
+      <!-- PREGUNTA 6 -->
+      <div class="concepto-group">
+        <label class="ficha-question">6. Una palabra que describe cómo te sentiste al escucharte en ese registro</label>
+        <p class="ficha-hint">Puede ser una emoción, una imagen o una sensación física.</p>
+        <div class="concepto-btns-row">
+          <button class="concepto-btn" onclick="toggleConcepto('c-identidad',this)">♩ ¿Por qué importa la identidad vocal? <span class="arrow">▾</span></button>
+        </div>
+        <div class="concepto-panel" id="c-identidad">
+          <div class="cp-title">La Identidad Vocal</div>
+La <strong>identidad vocal</strong> es el momento en que un cantante deja de luchar contra su voz y empieza a habitarla con confianza. No es un destino — es un proceso que comienza exactamente aquí: cuando puedes ponerle nombre a lo que tu voz es.
+
+La emoción que sientes al escuchar un artista de tu mismo registro y reconocerte en él es el primer paso de esa construcción. <strong>Encontrar quién eres vocalmente</strong> es lo más valioso que puedes hacer por tu canto.
+        </div>
+        <input type="text" id="q6" placeholder="Ejemplo: Emocionada, identificada, sorprendida, motivada, libre..."/>
+      </div>
+
+      <button class="submit-btn" id="submitBtn" onclick="guardarFicha()">Guardar mi evaluación ✦</button>
+      <div class="saved-alert" id="savedAlert">✓ ¡Evaluación guardada! Ya es visible para todo el grupo en "Progreso del Grupo".</div>
+      <div class="error-alert" id="errorAlert">⚠ No se pudo guardar. Verifica tu conexión a internet e inténtalo de nuevo.</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       PÁGINA 5 — PROGRESO DEL GRUPO
+  ═══════════════════════════════════════ -->
+  <section class="page" id="page-progreso">
+    <h2 class="section-title">Progreso del Grupo</h2>
+    <p class="section-desc">
+      Seguimiento en tiempo real de cuántas evaluaciones ha completado cada integrante. La meta es al menos 3 artistas evaluados. Los datos se actualizan automáticamente cada vez que alguien guarda una ficha.
+    </p>
+
+    <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-bottom:1.2rem;">
+      <div id="progresoDbStatus" class="db-status wait" style="margin-bottom:0;"><span class="status-dot"></span> Cargando datos...</div>
+    </div>
+
+    <!-- ACCESO ADMIN — Enlace discreto, casi invisible -->
+    <div style="text-align:right;margin-bottom:1rem;">
+      <span onclick="abrirAdmin()" style="font-family:'Josefin Sans',sans-serif;font-size:.6rem;letter-spacing:.1em;color:rgba(160,176,194,.2);cursor:pointer;user-select:none;">⚙</span>
+    </div>
+
+    <!-- PANEL ADMINISTRADOR — oculto hasta autenticarse -->
+    <div id="adminPanel" style="display:none;border:1px solid rgba(181,69,27,.3);border-radius:14px;background:rgba(181,69,27,.06);padding:1.8rem;margin-bottom:1.5rem;">
+
+      <!-- Pantalla de login -->
+      <div id="adminLogin">
+        <div style="font-family:'Josefin Sans',sans-serif;font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--baritono2);margin-bottom:.8rem;">⚙ Acceso de Administrador</div>
+        <p style="font-size:.84rem;color:#a0b0c2;margin-bottom:1rem;line-height:1.6;">Ingresa la contraseña de administrador para continuar.</p>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
+          <input type="password" id="adminPass" placeholder="Contraseña de administrador"
+            style="margin-bottom:0;width:auto;flex:1;min-width:200px;"
+            onkeydown="if(event.key==='Enter') verificarAdmin()"/>
+          <button onclick="verificarAdmin()" style="font-family:'Josefin Sans',sans-serif;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;padding:.65rem 1.4rem;border-radius:100px;border:1px solid rgba(201,168,76,.4);background:rgba(201,168,76,.1);color:var(--gold2);cursor:pointer;white-space:nowrap;">
+            Entrar ✦
+          </button>
+        </div>
+        <div id="adminLoginError" style="display:none;margin-top:.8rem;font-family:'Josefin Sans',sans-serif;font-size:.78rem;color:var(--baritono2);">✗ Contraseña incorrecta. Inténtalo de nuevo.</div>
+      </div>
+
+      <!-- Panel real — oculto hasta que la contraseña sea correcta -->
+      <div id="adminContent" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+          <div style="font-family:'Josefin Sans',sans-serif;font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--baritono2);">⚙ Panel de Administrador — Esteban Méndez</div>
+          <button onclick="cerrarAdmin()" style="font-family:'Josefin Sans',sans-serif;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;padding:.35rem .9rem;border-radius:100px;border:1px solid rgba(160,176,194,.2);background:transparent;color:var(--muted);cursor:pointer;">Cerrar ✕</button>
+        </div>
+
+        <p style="font-size:.84rem;color:#a0b0c2;margin-bottom:1.3rem;line-height:1.7;">
+          Desde aquí puedes eliminar evaluaciones de un integrante específico o resetear todo el progreso del grupo. Las eliminaciones no se pueden deshacer.
+        </p>
+
+        <!-- Eliminar por persona -->
+        <div style="margin-bottom:1.4rem;padding-bottom:1.4rem;border-bottom:1px solid rgba(201,168,76,.12);">
+          <div style="font-family:'Josefin Sans',sans-serif;font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem;">Eliminar evaluaciones de una persona</div>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
+            <select id="deletePersona" style="margin-bottom:0;width:auto;flex:1;min-width:180px;">
+              <option value="">— Selecciona integrante —</option>
+              <option value="Ruth Abreu">Ruth Abreu</option>
+              <option value="Lorena Méndez">Lorena Méndez</option>
+              <option value="Camila Caraballo">Camila Caraballo</option>
+              <option value="Rachel Benua">Rachel Benua</option>
+              <option value="Hellen Williams">Hellen Williams</option>
+              <option value="Yeni Santana">Yeni Santana</option>
+              <option value="Yalma Barreto">Yalma Barreto</option>
+              <option value="Esteban Méndez">Esteban Méndez</option>
+            </select>
+            <button onclick="eliminarPorPersona()" style="font-family:'Josefin Sans',sans-serif;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;padding:.6rem 1.4rem;border-radius:100px;border:1px solid rgba(181,69,27,.5);background:rgba(181,69,27,.15);color:var(--baritono2);cursor:pointer;white-space:nowrap;">
+              Eliminar ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- Resetear todo -->
+        <div>
+          <div style="font-family:'Josefin Sans',sans-serif;font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem;">Resetear todo el progreso del grupo</div>
+          <p style="font-size:.8rem;color:#a0b0c2;margin-bottom:.7rem;">Borra absolutamente todas las evaluaciones. Ideal para iniciar una nueva ronda de actividad.</p>
+          <button onclick="resetearTodo()" style="font-family:'Josefin Sans',sans-serif;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;padding:.6rem 1.8rem;border-radius:100px;border:1px solid rgba(181,69,27,.6);background:rgba(181,69,27,.2);color:var(--baritono2);cursor:pointer;">
+            ⚠ Resetear todo el progreso
+          </button>
+        </div>
+
+        <div id="adminMsg" style="display:none;margin-top:1rem;padding:.7rem 1rem;border-radius:8px;font-family:'Josefin Sans',sans-serif;font-size:.82rem;letter-spacing:.04em;"></div>
+      </div>
+    </div>
+
+    <div class="prog-grid" id="progGrid"></div>
+
+    <div class="progress-section">
+      <div class="prog-title">Evaluaciones Registradas</div>
+      <div id="evalList" style="font-family:'Josefin Sans',sans-serif;font-size:.82rem;color:var(--muted);line-height:2;">
+        Cargando...
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       PÁGINA 6 — EJERCICIOS CON TEMPORIZADOR
+  ═══════════════════════════════════════ -->
+  <section class="page" id="page-ejercicios">
+    <h2 class="section-title">Ejercicios Vocales</h2>
+    <p class="section-desc">Seis ejercicios para practicar en casa o al inicio del ensayo. Presiona <strong style="color:var(--gold2)">Iniciar</strong> en cada uno y sigue los pasos. El temporizador te indica cuánto tiempo llevas.</p>
+
+    <div class="ejercicio-grid" id="ejercicioGrid"></div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       PÁGINA 7 — VISUALIZADOR DE PIANO
+  ═══════════════════════════════════════ -->
+  <section class="page" id="page-piano">
+    <h2 class="section-title">Mi Registro en el Piano</h2>
+    <p class="section-desc">Aquí puedes ver exactamente dónde vive tu voz en el teclado. Cada color representa un registro. Toca cualquier tecla para escuchar la nota — así entrenas el oído para reconocer tu zona de confort.</p>
+
+    <div style="border:1px solid var(--border);border-radius:16px;background:var(--card-bg);padding:2rem;backdrop-filter:blur(6px);">
+      <div class="piano-legend" style="margin-bottom:1.2rem;margin-top:0;">
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(179,157,219,.7);"></div> Mezzo-Soprano (Mi3 – Do5)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(128,203,183,.7);"></div> Contralto (Sol2 – Re4)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(240,139,106,.7);"></div> Barítono (Do2 – Mi4)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:linear-gradient(90deg,rgba(179,157,219,.6),rgba(128,203,183,.6));"></div> Zona compartida</div>
+      </div>
+
+      <div class="piano-outer">
+        <div class="piano" id="pianoKeys"></div>
+      </div>
+
+      <div class="playing-note" id="playingNote">— Toca una tecla para escuchar —</div>
+
+      <div style="margin-top:1.4rem;border-top:1px solid var(--border);padding-top:1.2rem;">
+        <div style="font-family:'Josefin Sans',sans-serif;font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:.8rem;">¿Qué notar mientras escuchas?</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.8rem;font-size:.84rem;color:#b8c8d8;line-height:1.7;">
+          <div>♪ Toca notas en tu zona de color y luego fuera de ella — nota cómo se siente diferente intentar cantarlas.</div>
+          <div>♪ Las zonas que se superponen son donde los registros pueden "tocarse" armónicamente en el canto grupal.</div>
+          <div>♪ Busca la nota donde sientes que tu voz "aterrizaría" naturalmente — esa es tu nota ancla.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       PÁGINA 8 — BITÁCORA DE ENSAYO
+  ═══════════════════════════════════════ -->
+  <section class="page" id="page-bitacora">
+    <h2 class="section-title">Bitácora de Ensayo</h2>
+    <p class="section-desc">Registro de cada sesión. Esteban crea la sesión con el tema del día, y cada integrante escribe su reflexión personal de lo que aprendió. Queda guardado para ver la evolución del grupo a lo largo del tiempo.</p>
+
+    <!-- Panel solo visible para admin autenticado -->
+    <div id="bitacoraAdminPanel" style="display:none;" class="admin-session-form">
+      <div style="font-family:'Josefin Sans',sans-serif;font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--baritono2);margin-bottom:.8rem;">⚙ Crear nueva sesión — Administrador</div>
+      <label class="ficha-select-label">Tema del ensayo de hoy</label>
+      <input type="text" id="sesionTema" placeholder="Ej: Trabajo de respiración y resonancia de pecho..."/>
+      <button class="submit-btn" onclick="crearSesion()" style="padding:.7rem 1.8rem;">Crear sesión ✦</button>
+    </div>
+
+    <!-- Formulario para todos: dejar nota en la sesión activa -->
+    <div id="bitacoraFormPanel" style="display:none;" class="ficha-container" style="margin-bottom:2rem;">
+      <div style="font-family:'Josefin Sans',sans-serif;font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem;">Sesión activa: <span id="sesionActivaNombre" style="color:var(--cream);font-size:.8rem;letter-spacing:.04em;text-transform:none;font-family:'Lora',serif;"></span></div>
+      <label class="ficha-select-label" style="margin-top:.8rem;">¿Quién escribe?</label>
+      <select id="bitacoraPersona">
+        <option value="">— Tu nombre —</option>
+        <option value="Ruth Abreu">Ruth Abreu</option>
+        <option value="Lorena Méndez">Lorena Méndez</option>
+        <option value="Camila Caraballo">Camila Caraballo</option>
+        <option value="Rachel Benua">Rachel Benua</option>
+        <option value="Hellen Williams">Hellen Williams</option>
+        <option value="Yeni Santana">Yeni Santana</option>
+        <option value="Yalma Barreto">Yalma Barreto</option>
+        <option value="Esteban Méndez">Esteban Méndez</option>
+      </select>
+      <label class="ficha-select-label">¿Qué aprendiste o notaste hoy?</label>
+      <textarea id="bitacoraTexto" placeholder="Ej: Hoy noté que cuando apoyo desde el diafragma mi voz media suena más estable..."></textarea>
+      <button class="submit-btn" onclick="guardarNotaBitacora()" style="padding:.7rem 1.8rem;">Guardar mi nota ✦</button>
+      <div id="bitacoraOk" style="display:none;" class="saved-alert" style="margin-top:1rem;">✓ Nota guardada correctamente.</div>
+    </div>
+
+    <div id="bitacoraLogin" style="text-align:right;margin-bottom:.5rem;">
+      <span onclick="abrirBitacoraAdmin()" style="font-family:'Josefin Sans',sans-serif;font-size:.6rem;letter-spacing:.1em;color:rgba(160,176,194,.2);cursor:pointer;">⚙</span>
+    </div>
+
+    <div id="sesionesLista" style="font-family:'Josefin Sans',sans-serif;font-size:.84rem;color:var(--muted);">Cargando sesiones...</div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       PÁGINA 9 — EL MURO DEL GRUPO
+  ═══════════════════════════════════════ -->
+  <section class="page" id="page-muro">
+    <h2 class="section-title">El Muro del Grupo</h2>
+    <p class="section-desc">Un espacio para compartir lo que estás descubriendo. Después de escuchar a tu artista referente, deja un mensaje corto aquí. Todo el grupo lo ve en tiempo real.</p>
+
+    <div class="muro-form">
+      <label class="ficha-select-label">¿Quién escribe?</label>
+      <select id="muroPersona">
+        <option value="">— Tu nombre —</option>
+        <option value="Ruth Abreu">Ruth Abreu</option>
+        <option value="Lorena Méndez">Lorena Méndez</option>
+        <option value="Camila Caraballo">Camila Caraballo</option>
+        <option value="Rachel Benua">Rachel Benua</option>
+        <option value="Hellen Williams">Hellen Williams</option>
+        <option value="Yeni Santana">Yeni Santana</option>
+        <option value="Yalma Barreto">Yalma Barreto</option>
+        <option value="Esteban Méndez">Esteban Méndez</option>
+      </select>
+      <label class="ficha-select-label">Tu mensaje</label>
+      <textarea id="muroTexto" style="min-height:70px;" placeholder="Ej: Escuché a Lauren Daigle hoy y noté que en el puente su voz no sube de volumen sino de intensidad — quiero aprender eso..."></textarea>
+      <button class="submit-btn" onclick="publicarMuro()" style="padding:.7rem 1.8rem;">Publicar en el Muro ✦</button>
+      <div id="muroOk" style="display:none;" class="saved-alert" style="margin-top:1rem;">✓ ¡Publicado! Ya lo puede ver todo el grupo.</div>
+    </div>
+
+    <div id="muroMensajes" style="font-family:'Josefin Sans',sans-serif;font-size:.84rem;color:var(--muted);">Cargando mensajes...</div>
+  </section>
+
+</div><!-- /wrapper -->
+
+<footer>
+  Canto Cristiano Evangélico &nbsp;·&nbsp; Guía Vocal Interactiva &nbsp;·&nbsp; Descubre Tu Voz, Descubre Tu Llamado
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════
+     JAVASCRIPT — Lógica de la aplicación
+     ════════════════════════════════════════════════════ -->
+<script>
+/* ══════════════════════════════════════════════════
+   CONFIGURACIÓN DE SUPABASE
+   ─────────────────────────────────────────────────
+   Reemplaza los dos valores de abajo con los datos
+   de tu proyecto Supabase (ver guía de instalación).
+   No compartas estas claves públicamente fuera del
+   grupo — son de solo lectura/inserción (anon key).
+══════════════════════════════════════════════════ */
+const SUPABASE_URL  = 'TU_URL_AQUI';     // Ej: https://abcxyz.supabase.co
+const SUPABASE_KEY  = 'TU_CLAVE_AQUI';  // La "anon public" key de tu proyecto
+
+// Inicializamos el cliente de Supabase usando el SDK cargado por CDN
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ══════════════════════════════════════════════════
+   DATOS DEL GRUPO
+══════════════════════════════════════════════════ */
+const members = [
+  { name:"Ruth Abreu",       reg:"Mezzo-Soprano", cls:"mezzo" },
+  { name:"Lorena Méndez",    reg:"Mezzo-Soprano", cls:"mezzo" },
+  { name:"Camila Caraballo", reg:"Mezzo-Soprano", cls:"mezzo" },
+  { name:"Rachel Benua",     reg:"Mezzo-Soprano", cls:"mezzo" },
+  { name:"Hellen Williams",  reg:"Mezzo-Soprano", cls:"mezzo" },
+  { name:"Yeni Santana",     reg:"Contralto",     cls:"contralto" },
+  { name:"Yalma Barreto",    reg:"Contralto",     cls:"contralto" },
+  { name:"Esteban Méndez",   reg:"Barítono",      cls:"baritono" },
+];
+
+const regDesc = {
+  mezzo:     "Registro femenino medio — cálido y expresivo",
+  contralto: "Registro femenino profundo — oscuro y singular",
+  baritono:  "Registro masculino medio — autoritario y versátil",
+};
+
+/* ══════════════════════════════════════════════════
+   VERIFICACIÓN DE CONEXIÓN AL ARRANCAR
+   Hacemos un SELECT de 1 fila para confirmar que
+   Supabase está configurado y responde correctamente.
+══════════════════════════════════════════════════ */
+async function checkConnection() {
+  const statusEl = document.getElementById('dbStatus');
+  try {
+    const { error } = await sb.from('evaluaciones').select('id').limit(1);
+    if (error) throw error;
+    setStatus(statusEl, 'ok', '✓ Base de datos conectada');
+  } catch (e) {
+    setStatus(statusEl, 'err', '✗ Sin conexión — revisa la configuración');
+    console.error('Supabase connection error:', e.message);
+  }
+}
+
+function setStatus(el, type, msg) {
+  if (!el) return;
+  el.className = 'db-status ' + type;
+  el.innerHTML = `<span class="status-dot"></span> ${msg}`;
+}
+
+/* ══════════════════════════════════════════════════
+   GUARDAR UNA EVALUACIÓN EN SUPABASE
+   Insertamos un nuevo registro en la tabla
+   "evaluaciones" con todos los campos del formulario.
+══════════════════════════════════════════════════ */
+async function guardarFicha() {
+  const persona = document.getElementById('fichaPersona').value;
+  const artista = document.getElementById('fichaArtista').value;
+
+  if (!persona || !artista) {
+    alert('Por favor selecciona tu nombre y el artista evaluado antes de guardar.');
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
+  const { error } = await sb.from('evaluaciones').insert([{
+    persona,
+    artista,
+    cancion: document.getElementById('fichaCancion').value,
+    q1:      document.getElementById('q1').value,
+    q2:      document.getElementById('q2').value,
+    q3:      document.getElementById('q3').value,
+    q4:      document.getElementById('q4').value,
+    q6:      document.getElementById('q6').value,
+    stars:   starVal,
+    fecha:   new Date().toLocaleDateString('es-DO'),
+  }]);
+
+  btn.disabled = false;
+  btn.textContent = 'Guardar mi evaluación ✦';
+
+  if (error) {
+    console.error('Insert error:', error.message);
+    const err = document.getElementById('errorAlert');
+    err.style.display = 'block';
+    setTimeout(() => err.style.display = 'none', 5000);
+  } else {
+    const ok = document.getElementById('savedAlert');
+    ok.style.display = 'block';
+    setTimeout(() => ok.style.display = 'none', 4000);
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   CARGAR Y MOSTRAR PROGRESO DEL GRUPO
+   Hacemos un SELECT de todas las evaluaciones,
+   ordenadas por fecha de creación, y construimos
+   las tarjetas de progreso y el historial.
+══════════════════════════════════════════════════ */
+async function renderProgress() {
+  const statusEl = document.getElementById('progresoDbStatus');
+  setStatus(statusEl, 'wait', 'Cargando datos...');
+
+  const { data: evals, error } = await sb
+    .from('evaluaciones')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    setStatus(statusEl, 'err', '✗ Error al cargar — verifica la conexión');
+    console.error('Select error:', error.message);
+    return;
+  }
+
+  setStatus(statusEl, 'ok', `✓ ${evals.length} evaluación${evals.length !== 1 ? 'es' : ''} registrada${evals.length !== 1 ? 's' : ''}`);
+
+  const GOAL = 3;
+
+  // ─── Tarjetas de progreso por integrante ───
+  document.getElementById('progGrid').innerHTML = members.map(m => {
+    const done  = evals.filter(e => e.persona === m.name).length;
+    const pct   = Math.min(100, Math.round(done / GOAL * 100));
+    const color = m.cls === 'mezzo' ? 'var(--mezzo2)' : m.cls === 'contralto' ? 'var(--contralto2)' : 'var(--baritono2)';
+    return `
+      <div class="prog-card">
+        <div class="prog-name">${m.name}</div>
+        <div class="prog-reg-label" style="color:${color}">${m.reg}</div>
+        <div class="prog-bar-wrap">
+          <div class="prog-bar ${m.cls}-bar" style="width:${pct}%"></div>
+        </div>
+        <div class="prog-pct">${done} / ${GOAL} evaluaciones · ${pct}%</div>
+      </div>`;
+  }).join('');
+
+  // ─── Historial de evaluaciones ───
+  const listEl = document.getElementById('evalList');
+  if (evals.length === 0) {
+    listEl.innerHTML = 'Aún no hay evaluaciones guardadas. Sean los primeros en llenar la ficha.';
+    return;
+  }
+
+  listEl.innerHTML = evals.map(e => `
+    <div style="border-bottom:1px solid var(--border);padding:.8rem 0;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.4rem;">
+        <div>
+          <span style="color:var(--cream);font-weight:600;font-family:'Cormorant Garamond',serif;font-size:1rem;">${e.persona}</span>
+          <span style="color:var(--gold);margin:0 .5rem;">↔</span>
+          <span style="color:#c9d4e0;">${e.artista}</span>
+          ${e.cancion ? `<span style="color:var(--muted);font-size:.85rem;"> · "${e.cancion}"</span>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:.6rem;">
+          <span style="color:var(--gold);font-size:1rem;">${'★'.repeat(e.stars||0)}<span style="color:rgba(201,168,76,.2);">${'★'.repeat(5-(e.stars||0))}</span></span>
+          <span style="color:rgba(160,176,194,.4);font-size:.7rem;font-family:'Josefin Sans',sans-serif;">${e.fecha}</span>
+        </div>
+      </div>
+      ${e.q6 ? `<span style="display:inline-block;margin-top:.5rem;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.25);border-radius:100px;padding:.2rem .8rem;font-size:.72rem;color:var(--gold2);font-family:'Josefin Sans',sans-serif;letter-spacing:.06em;">${e.q6}</span>` : ''}
+      ${e.q4 ? `<div style="margin-top:.4rem;font-size:.82rem;color:var(--muted);line-height:1.6;"><span style="color:var(--gold);font-family:'Josefin Sans',sans-serif;font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;">Meta de práctica: </span>${e.q4}</div>` : ''}
+    </div>`).join('');
+}
+
+/* ══════════════════════════════════════════════════
+   CONTRASEÑA DE ADMINISTRADOR
+   Cámbiala aquí antes de subir el archivo a Netlify.
+   Solo Esteban la sabrá — compártela por privado.
+══════════════════════════════════════════════════ */
+const ADMIN_PASSWORD = 'canto2026';  // ← Cambia esto por la contraseña que quieras
+
+function abrirAdmin() {
+  const panel = document.getElementById('adminPanel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  // Siempre mostrar el login al abrir, nunca el panel directamente
+  document.getElementById('adminLogin').style.display = 'block';
+  document.getElementById('adminContent').style.display = 'none';
+  document.getElementById('adminLoginError').style.display = 'none';
+  document.getElementById('adminPass').value = '';
+  if (panel.style.display === 'block') {
+    setTimeout(() => document.getElementById('adminPass').focus(), 100);
+  }
+}
+
+function verificarAdmin() {
+  const pass = document.getElementById('adminPass').value;
+  if (pass === ADMIN_PASSWORD) {
+    document.getElementById('adminLogin').style.display = 'none';
+    document.getElementById('adminContent').style.display = 'block';
+    document.getElementById('adminLoginError').style.display = 'none';
+  } else {
+    document.getElementById('adminLoginError').style.display = 'block';
+    document.getElementById('adminPass').value = '';
+    document.getElementById('adminPass').focus();
+  }
+}
+
+function cerrarAdmin() {
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('adminLogin').style.display = 'block';
+  document.getElementById('adminContent').style.display = 'none';
+  document.getElementById('adminPass').value = '';
+}
+
+/* ══════════════════════════════════════════════════
+   FUNCIONES DE ADMINISTRADOR
+   Eliminar evaluaciones por persona o resetear todo.
+   Se confirma con un alert antes de borrar para
+   evitar eliminaciones accidentales.
+══════════════════════════════════════════════════ */
+function showAdminMsg(texto, tipo) {
+  const el = document.getElementById('adminMsg');
+  el.style.display = 'block';
+  el.textContent = texto;
+  el.style.background = tipo === 'ok'
+    ? 'rgba(46,125,103,.2)' : 'rgba(181,69,27,.2)';
+  el.style.border = tipo === 'ok'
+    ? '1px solid var(--contralto2)' : '1px solid var(--baritono2)';
+  el.style.color = tipo === 'ok'
+    ? 'var(--contralto2)' : 'var(--baritono2)';
+  setTimeout(() => el.style.display = 'none', 4000);
+}
+
+async function eliminarPorPersona() {
+  const persona = document.getElementById('deletePersona').value;
+  if (!persona) {
+    alert('Por favor selecciona un integrante antes de eliminar.');
+    return;
+  }
+  const confirmar = confirm(`¿Segura que quieres eliminar TODAS las evaluaciones de ${persona}? Esta acción no se puede deshacer.`);
+  if (!confirmar) return;
+
+  const { error } = await sb
+    .from('evaluaciones')
+    .delete()
+    .eq('persona', persona);
+
+  if (error) {
+    showAdminMsg('✗ Error al eliminar. Inténtalo de nuevo.', 'err');
+    console.error(error.message);
+  } else {
+    showAdminMsg(`✓ Evaluaciones de ${persona} eliminadas correctamente.`, 'ok');
+    document.getElementById('deletePersona').value = '';
+    renderProgress();
+  }
+}
+
+async function resetearTodo() {
+  const confirmar = confirm('⚠ ¿Segura que quieres borrar TODO el progreso del grupo? Esta acción no se puede deshacer.');
+  if (!confirmar) return;
+  const confirmar2 = confirm('Segunda confirmación: esto borrará las evaluaciones de todos los integrantes. ¿Continuar?');
+  if (!confirmar2) return;
+
+  const { error } = await sb
+    .from('evaluaciones')
+    .delete()
+    .neq('id', 0); // borra todas las filas
+
+  if (error) {
+    showAdminMsg('✗ Error al resetear. Inténtalo de nuevo.', 'err');
+    console.error(error.message);
+  } else {
+    showAdminMsg('✓ Todo el progreso del grupo ha sido reseteado.', 'ok');
+    renderProgress();
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   NAVEGACIÓN ENTRE PÁGINAS
+══════════════════════════════════════════════════ */
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+  // Recargamos el progreso cada vez que se abre esa pestaña
+  if (id === 'progreso') renderProgress();
+}
+
+/* ══════════════════════════════════════════════════
+   BOTONES DESPLEGABLES DE CONCEPTOS
+══════════════════════════════════════════════════ */
+function toggleConcepto(id, btn) {
+  const panel  = document.getElementById(id);
+  const isOpen = panel.classList.contains('visible');
+  panel.classList.toggle('visible', !isOpen);
+  if (btn) btn.classList.toggle('open', !isOpen);
+}
+
+/* ══════════════════════════════════════════════════
+   ESTRELLAS DE VALORACIÓN
+══════════════════════════════════════════════════ */
+let starVal = 0;
+document.getElementById('starRow').addEventListener('click', e => {
+  if (!e.target.dataset.v) return;
+  starVal = +e.target.dataset.v;
+  document.querySelectorAll('.star').forEach(s => s.classList.toggle('active', +s.dataset.v <= starVal));
+});
+
+/* ══════════════════════════════════════════════════
+   EJERCICIOS CON TEMPORIZADOR
+══════════════════════════════════════════════════ */
+const EJERCICIOS = [
+  {
+    num: 1, name: "Respiración Diafragmática", dur: 60,
+    desc: "La base de todo canto. Aprende a respirar desde el abdomen, no del pecho.",
+    steps: [
+      "Siéntate o párate con la espalda recta.",
+      "Coloca una mano en el pecho y otra en el abdomen.",
+      "Inhala lentamente por la nariz 4 tiempos — solo el abdomen debe moverse.",
+      "Sostén el aire 2 tiempos sin tensión.",
+      "Exhala lentamente por la boca en 6 tiempos con un suave 'sss'.",
+      "Repite durante todo el tiempo del temporizador."
+    ]
+  },
+  {
+    num: 2, name: "Vibración de Labios", dur: 45,
+    desc: "Activa la resonancia facial y calienta las cuerdas vocales sin tensión.",
+    steps: [
+      "Relaja completamente la cara y los labios.",
+      "Inhala profundamente desde el diafragma.",
+      "Exhala dejando que el aire haga vibrar los labios ('brrr').",
+      "Mientras vibran, canta una nota cómoda de tu registro medio.",
+      "Sube y baja de tono suavemente sin perder la vibración.",
+      "Si los labios se detienen, hay tensión — relaja la mandíbula."
+    ]
+  },
+  {
+    num: 3, name: "Escala de Calentamiento", dur: 90,
+    desc: "Activa el rango completo de tu registro con una escala suave ascendente y descendente.",
+    steps: [
+      "Usa la vocal 'mi' o 'ma' — la que suene más natural.",
+      "Empieza en la nota más cómoda del centro de tu registro.",
+      "Canta Do-Re-Mi-Fa-Sol subiendo, luego Sol-Fa-Mi-Re-Do bajando.",
+      "Sube medio tono con cada repetición, sin forzar los agudos.",
+      "Cuando sientas tensión, ya llegaste al límite — no sigas subiendo.",
+      "Haz lo mismo bajando desde tu nota central hacia los graves."
+    ]
+  },
+  {
+    num: 4, name: "Resonancia de Pecho", dur: 60,
+    desc: "Desarrolla la riqueza tímbrica de las notas medias y graves de tu registro.",
+    steps: [
+      "Coloca la mano sobre el esternón (centro del pecho).",
+      "Canta una nota grave-media con la vocal 'o' o 'u'.",
+      "Siente la vibración en el pecho con la mano — ese es el objetivo.",
+      "Mantén esa misma sensación de vibración mientras subes al registro medio.",
+      "Si la vibración desaparece al subir, bajaste la presión de aire — sostén más.",
+      "Repite cada nota 4 tiempos, lentamente."
+    ]
+  },
+  {
+    num: 5, name: "Control de Dinámica", dur: 75,
+    desc: "Aprende a cantar suave sin perder el color de tu voz — la habilidad más difícil y más expresiva.",
+    steps: [
+      "Elige una nota cómoda de tu zona media.",
+      "Canta esa nota en forte (fuerte) durante 4 tiempos.",
+      "Baja gradualmente a piano (suave) en los siguientes 4 tiempos.",
+      "La clave: la voz no debe 'apagarse' ni cambiar de color al bajar.",
+      "Si se apaga, el apoyo diafragmático está fallando — sostén más el aire.",
+      "Practica el crescendo también: de piano a forte manteniendo el timbre."
+    ]
+  },
+  {
+    num: 6, name: "Enfriamiento Vocal", dur: 45,
+    desc: "Cierra el calentamiento relajando las cuerdas y devolviendo la voz a su estado natural.",
+    steps: [
+      "Canta suavemente un 'mmm' con los labios cerrados.",
+      "Deja que la nota baje sola desde un agudo cómodo hasta el grave natural.",
+      "Repite varias veces como un suspiro cantado.",
+      "Masajea suavemente las mejillas y la mandíbula con los dedos.",
+      "Bosteza profundamente — abre la garganta al máximo.",
+      "Termina con tres respiraciones diafragmáticas lentas en silencio."
+    ]
+  }
+];
+
+const timerState = {};
+
+function renderEjercicios() {
+  document.getElementById('ejercicioGrid').innerHTML = EJERCICIOS.map(e => `
+    <div class="ejercicio-card" id="ej-${e.num}">
+      <div class="ejercicio-num">Ejercicio ${e.num} · ${e.dur}s</div>
+      <div class="ejercicio-name">${e.name}</div>
+      <div class="ejercicio-dur">${e.desc}</div>
+      <ol class="ejercicio-steps">${e.steps.map(s => `<li>${s}</li>`).join('')}</ol>
+      <div class="timer-display" id="td-${e.num}">${formatTime(e.dur)}</div>
+      <div class="timer-bar-wrap"><div class="timer-bar" id="tb-${e.num}" style="width:100%;"></div></div>
+      <div class="timer-btns">
+        <button class="timer-btn primary" id="tbtn-${e.num}" onclick="toggleTimer(${e.num},${e.dur})">▶ Iniciar</button>
+        <button class="timer-btn" onclick="resetTimer(${e.num},${e.dur})">↺ Reiniciar</button>
+      </div>
+      <div class="timer-done" id="tdone-${e.num}">✓ ¡Ejercicio completado! Bien hecho.</div>
+    </div>`).join('');
+}
+
+function formatTime(s) {
+  return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+}
+
+function toggleTimer(num, total) {
+  const st = timerState[num];
+  if (!st || !st.running) {
+    startTimer(num, total);
+  } else {
+    pauseTimer(num);
+  }
+}
+
+function startTimer(num, total) {
+  if (!timerState[num]) timerState[num] = { remaining: total, running: false };
+  timerState[num].running = true;
+  document.getElementById(`tbtn-${num}`).textContent = '⏸ Pausar';
+  document.getElementById(`tdone-${num}`).style.display = 'none';
+  timerState[num].interval = setInterval(() => {
+    timerState[num].remaining--;
+    const r = timerState[num].remaining;
+    document.getElementById(`td-${num}`).textContent = formatTime(r);
+    document.getElementById(`tb-${num}`).style.width = (r / total * 100) + '%';
+    if (r <= 0) {
+      clearInterval(timerState[num].interval);
+      timerState[num].running = false;
+      document.getElementById(`tbtn-${num}`).textContent = '▶ Iniciar';
+      document.getElementById(`tdone-${num}`).style.display = 'block';
+      // Pequeña vibración en móvil si está disponible
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    }
+  }, 1000);
+}
+
+function pauseTimer(num) {
+  clearInterval(timerState[num].interval);
+  timerState[num].running = false;
+  document.getElementById(`tbtn-${num}`).textContent = '▶ Continuar';
+}
+
+function resetTimer(num, total) {
+  if (timerState[num]) {
+    clearInterval(timerState[num].interval);
+    timerState[num] = { remaining: total, running: false };
+  }
+  document.getElementById(`td-${num}`).textContent = formatTime(total);
+  document.getElementById(`tb-${num}`).style.width = '100%';
+  document.getElementById(`tbtn-${num}`).textContent = '▶ Iniciar';
+  document.getElementById(`tdone-${num}`).style.display = 'none';
+}
+
+/* ══════════════════════════════════════════════════
+   PIANO VISUALIZADOR
+   Muestra Do2–Do5 con zonas coloreadas por registro.
+   Toca notas reales usando Web Audio API.
+══════════════════════════════════════════════════ */
+let audioCtx = null;
+
+function getMidiFreq(midi) {
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+function playNote(freq) {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc  = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+  osc.start(audioCtx.currentTime);
+  osc.stop(audioCtx.currentTime + 1.2);
+}
+
+function buildPiano() {
+  const container = document.getElementById('pianoKeys');
+  container.innerHTML = '';
+
+  // Notas a mostrar: Do2 (MIDI 36) → Do5 (MIDI 72)
+  const START_MIDI = 36; // C2
+  const END_MIDI   = 72; // C5
+
+  const NOTE_NAMES = ['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si'];
+  const OCTAVE_NAMES = ['','','2','','','','','','','','',''];
+  const IS_WHITE = [true,false,true,false,true,true,false,true,false,true,false,true];
+
+  // Rangos de confort (MIDI)
+  const MEZZO_MIN = 52, MEZZO_MAX = 72;    // Mi3–Do5
+  const CONTRA_MIN = 43, CONTRA_MAX = 62;  // Sol2–Re4
+  const BARI_MIN = 36, BARI_MAX = 64;      // Do2–Mi4
+
+  function getZoneClass(midi) {
+    const inMezzo = midi >= MEZZO_MIN && midi <= MEZZO_MAX;
+    const inContra = midi >= CONTRA_MIN && midi <= CONTRA_MAX;
+    const inBari = midi >= BARI_MIN && midi <= BARI_MAX;
+    if (inMezzo && inContra) return 'multi-zone';
+    if (inMezzo)   return 'mezzo-zone';
+    if (inContra)  return 'contralto-zone';
+    if (inBari)    return 'baritono-zone';
+    return '';
+  }
+
+  const noteNames = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const noteLabels = ['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si'];
+
+  // Renderizamos blancas primero, luego superponemos negras con margin negativo
+  // Pero usamos flex con margin negativo para las negras
+  let html = '';
+  let whiteCount = 0;
+
+  for (let midi = START_MIDI; midi <= END_MIDI; midi++) {
+    const noteIdx  = midi % 12;
+    const octave   = Math.floor(midi / 12) - 1;
+    const isWhite  = IS_WHITE[noteIdx];
+    const freq     = getMidiFreq(midi).toFixed(2);
+    const label    = NOTE_NAMES[noteIdx];
+    const zone     = isWhite ? getZoneClass(midi) : '';
+    const display  = (noteIdx === 0) ? `${label}<br>${octave}` : (noteIdx === 4 || noteIdx === 7) ? label : '';
+
+    if (isWhite) {
+      html += `<div class="pkey white ${zone}" onclick="pianoClick(${freq},'${label}${octave}')" title="${label}${octave}">
+        <div class="pkey-note">${display}</div>
+      </div>`;
+      whiteCount++;
+    } else {
+      html += `<div class="pkey black" onclick="pianoClick(${freq},'${label}${octave}')" title="${label}${octave}">
+        <div class="pkey-note">${label}</div>
+      </div>`;
+    }
+  }
+  container.innerHTML = html;
+}
+
+function pianoClick(freq, name) {
+  playNote(freq);
+  const el = document.getElementById('playingNote');
+  el.textContent = `♪  ${name}  ·  ${freq} Hz`;
+  el.style.opacity = '1';
+  setTimeout(() => el.style.opacity = '0.4', 1000);
+}
+
+/* ══════════════════════════════════════════════════
+   BITÁCORA DE ENSAYO (Supabase)
+══════════════════════════════════════════════════ */
+let bitacoraAdminAuth = false;
+let sesionActivaId    = null;
+
+function abrirBitacoraAdmin() {
+  const pass = prompt('Contraseña de administrador:');
+  if (pass === ADMIN_PASSWORD) {
+    bitacoraAdminAuth = true;
+    document.getElementById('bitacoraAdminPanel').style.display = 'block';
+  } else if (pass !== null) {
+    alert('Contraseña incorrecta.');
+  }
+}
+
+async function crearSesion() {
+  const tema = document.getElementById('sesionTema').value.trim();
+  if (!tema) { alert('Escribe el tema del ensayo.'); return; }
+  const { error } = await sb.from('sesiones').insert([{
+    tema,
+    fecha: new Date().toLocaleDateString('es-DO'),
+    activa: true
+  }]);
+  if (error) { alert('Error al crear sesión: ' + error.message); return; }
+  document.getElementById('sesionTema').value = '';
+  cargarBitacora();
+}
+
+async function guardarNotaBitacora() {
+  const persona = document.getElementById('bitacoraPersona').value;
+  const texto   = document.getElementById('bitacoraTexto').value.trim();
+  if (!persona || !texto) { alert('Selecciona tu nombre y escribe tu nota.'); return; }
+  if (!sesionActivaId)    { alert('No hay una sesión activa en este momento.'); return; }
+  const { error } = await sb.from('notas_sesion').insert([{
+    sesion_id: sesionActivaId, persona, texto,
+    fecha: new Date().toLocaleDateString('es-DO')
+  }]);
+  if (error) { alert('Error al guardar: ' + error.message); return; }
+  document.getElementById('bitacoraTexto').value = '';
+  const ok = document.getElementById('bitacoraOk');
+  ok.style.display = 'block';
+  setTimeout(() => ok.style.display = 'none', 3000);
+  cargarBitacora();
+}
+
+async function cargarBitacora() {
+  const listEl = document.getElementById('sesionesLista');
+
+  const { data: sesiones, error } = await sb
+    .from('sesiones').select('*').order('created_at', { ascending: false });
+
+  if (error) {
+    listEl.innerHTML = '<div style="color:var(--baritono2);font-size:.84rem;">⚠ No se pudieron cargar las sesiones. Verifica que la tabla "sesiones" existe en Supabase.</div>';
+    return;
+  }
+
+  if (!sesiones || sesiones.length === 0) {
+    listEl.innerHTML = '<div style="color:var(--muted);font-size:.84rem;">Aún no hay sesiones registradas. Esteban puede crear la primera sesión usando el ⚙ de arriba.</div>';
+    document.getElementById('bitacoraFormPanel').style.display = 'none';
+    return;
+  }
+
+  // Sesión más reciente es la activa
+  const activa = sesiones[0];
+  sesionActivaId = activa.id;
+  document.getElementById('sesionActivaNombre').textContent = activa.tema;
+  document.getElementById('bitacoraFormPanel').style.display = 'block';
+
+  // Cargamos notas de todas las sesiones
+  const { data: notas } = await sb.from('notas_sesion').select('*').order('created_at', { ascending: true });
+
+  const clsMember = (name) => {
+    const m = members.find(x => x.name === name);
+    return m ? m.cls : 'mezzo';
+  };
+
+  listEl.innerHTML = sesiones.map(s => {
+    const notasSesion = (notas || []).filter(n => n.sesion_id === s.id);
+    const esActiva    = s.id === activa.id;
+    return `
+      <div class="sesion-card">
+        <div class="sesion-header">
+          <div>
+            <div class="sesion-fecha">${s.fecha}${esActiva ? ' · <span style="color:var(--contralto2);">Sesión activa</span>' : ''}</div>
+            <div class="sesion-tema">${s.tema}</div>
+          </div>
+          <div style="font-family:'Josefin Sans',sans-serif;font-size:.7rem;color:var(--muted);">${notasSesion.length} nota${notasSesion.length !== 1 ? 's' : ''}</div>
+        </div>
+        ${notasSesion.length > 0 ? `
+          <div class="notas-lista">
+            ${notasSesion.map(n => `
+              <div class="nota-item">
+                <div class="nota-autor" style="color:var(--${clsMember(n.persona) === 'mezzo' ? 'mezzo2' : clsMember(n.persona) === 'contralto' ? 'contralto2' : 'baritono2'});">${n.persona}</div>
+                ${n.texto}
+              </div>`).join('')}
+          </div>` : `<div style="font-size:.82rem;color:var(--muted);font-style:italic;">Aún no hay notas para esta sesión.</div>`}
+      </div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════
+   EL MURO DEL GRUPO (Supabase)
+══════════════════════════════════════════════════ */
+async function publicarMuro() {
+  const persona = document.getElementById('muroPersona').value;
+  const texto   = document.getElementById('muroTexto').value.trim();
+  if (!persona || !texto) { alert('Selecciona tu nombre y escribe tu mensaje.'); return; }
+  if (texto.length > 400) { alert('El mensaje es muy largo. Máximo 400 caracteres.'); return; }
+
+  const { error } = await sb.from('muro').insert([{
+    persona, texto, fecha: new Date().toLocaleDateString('es-DO')
+  }]);
+
+  if (error) { alert('Error al publicar: ' + error.message); return; }
+
+  document.getElementById('muroTexto').value = '';
+  const ok = document.getElementById('muroOk');
+  ok.style.display = 'block';
+  setTimeout(() => ok.style.display = 'none', 3000);
+  cargarMuro();
+}
+
+async function cargarMuro() {
+  const listEl = document.getElementById('muroMensajes');
+
+  const { data: msgs, error } = await sb
+    .from('muro').select('*').order('created_at', { ascending: false }).limit(50);
+
+  if (error) {
+    listEl.innerHTML = '<div style="color:var(--baritono2);font-size:.84rem;">⚠ No se pudo cargar el muro. Verifica que la tabla "muro" existe en Supabase.</div>';
+    return;
+  }
+
+  if (!msgs || msgs.length === 0) {
+    listEl.innerHTML = '<div style="color:var(--muted);font-size:.84rem;">El muro está vacío — ¡sé el primero en publicar algo!</div>';
+    return;
+  }
+
+  const clsMember = (name) => {
+    const m = members.find(x => x.name === name);
+    return m ? m.cls : 'mezzo';
+  };
+
+  listEl.innerHTML = msgs.map(m => `
+    <div class="muro-msg ${clsMember(m.persona)}-msg">
+      <div class="muro-msg-name">${m.persona}</div>
+      <div class="muro-msg-text">${m.texto}</div>
+      <div class="muro-msg-meta">${m.fecha}</div>
+    </div>`).join('');
+}
+
+/* ══════════════════════════════════════════════════
+   ACTUALIZAR showPage PARA NUEVAS PÁGINAS
+══════════════════════════════════════════════════ */
+const _origShowPage = showPage;
+// Reemplazamos showPage para incluir los nuevos onLoad
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'progreso')   renderProgress();
+  if (id === 'piano')      buildPiano();
+  if (id === 'bitacora')   cargarBitacora();
+  if (id === 'muro')       cargarMuro();
+}
+function renderMembers() {
+  document.getElementById('membersGrid').innerHTML = members.map(m => `
+    <div class="member-card ${m.cls}">
+      <div class="member-name">${m.name}</div>
+      <div class="member-reg">${m.reg}</div>
+      <div style="font-size:.82rem;color:var(--muted);line-height:1.6;">${regDesc[m.cls]}</div>
+    </div>`).join('');
+}
+
+/* ══════════════════════════════════════════════════
+   NOTAS MUSICALES FLOTANTES DE FONDO
+══════════════════════════════════════════════════ */
+function spawnNotes() {
+  const symbols = ['♩','♪','♫','♬','𝄞'];
+  const bg = document.getElementById('notesBg');
+  for (let i = 0; i < 22; i++) {
+    const n = document.createElement('span');
+    n.className = 'note';
+    n.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+    n.style.left            = Math.random() * 100 + 'vw';
+    n.style.animationDuration = (14 + Math.random() * 20) + 's';
+    n.style.animationDelay    = -(Math.random() * 30) + 's';
+    n.style.fontSize          = (.7 + Math.random() * .9) + 'rem';
+    bg.appendChild(n);
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   INICIALIZACIÓN
+══════════════════════════════════════════════════ */
+renderMembers();
+renderEjercicios();
+spawnNotes();
+checkConnection();
+</script>
+</body>
+</html>
