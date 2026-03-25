@@ -1159,6 +1159,7 @@ async function renderProgress() {
    Cámbiala aquí antes de subir el archivo a Netlify.
    Solo Esteban la sabrá — compártela por privado.
 ══════════════════════════════════════════════════ */
+let adminAutenticado = false;
 const ADMIN_PASSWORD = 'canto2026';  // ← Cambia esto por la contraseña que quieras
  
 function abrirAdmin() {
@@ -1179,6 +1180,7 @@ function verificarAdmin() {
   if (pass === ADMIN_PASSWORD) {
     document.getElementById('adminLogin').style.display = 'none';
     document.getElementById('adminContent').style.display = 'block';
+    adminAutenticado = true;
     document.getElementById('adminLoginError').style.display = 'none';
   } else {
     document.getElementById('adminLoginError').style.display = 'block';
@@ -1258,16 +1260,8 @@ async function resetearTodo() {
 }
  
 /* ══════════════════════════════════════════════════
-   NAVEGACIÓN ENTRE PÁGINAS
+   NAVEGACIÓN ENTRE PÁGINAS — ver función showPage completa más abajo
 ══════════════════════════════════════════════════ */
-function showPage(id, btn) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-' + id).classList.add('active');
-  btn.classList.add('active');
-  // Recargamos el progreso cada vez que se abre esa pestaña
-  if (id === 'progreso') renderProgress();
-}
  
 /* ══════════════════════════════════════════════════
    BOTONES DESPLEGABLES DE CONCEPTOS
@@ -1442,74 +1436,6 @@ function resetTimer(num, total) {
    Muestra Do2–Do5 con zonas coloreadas por registro.
    Toca notas reales usando Web Audio API.
 ══════════════════════════════════════════════════ */
-let audioCtx = null;
- 
-function getAudioCtx() {
-  if (!audioCtx) {
-    var AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return null;
-    audioCtx = new AC();
-  }
-  return audioCtx;
-}
- 
-/* Activa el audio en iOS Safari desde un gesto directo
-   del usuario y reproduce una nota de confirmación.     */
-function activarAudioIOS() {
-  var ctx = getAudioCtx();
-  if (!ctx) { alert('Tu navegador no soporta audio web.'); return; }
-  if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
- 
-  // Toca Do3 como confirmación audible
-  _tocarBuffer(ctx, 261.63);
- 
-  var btn = document.getElementById('iosAudioBtn');
-  if (btn) {
-    btn.innerHTML = '<div style="font-family:\'Josefin Sans\',sans-serif;font-size:.75rem;letter-spacing:.12em;color:var(--contralto2);padding:.5rem 1rem;">✓ Audio activado — ya puedes tocar el teclado</div>';
-  }
-}
- 
-function getMidiFreq(midi) {
-  return 440 * Math.pow(2, (midi - 69) / 12);
-}
- 
-/* Genera sonido usando un buffer de onda sinusoidal manual.
-   Más confiable que OscillatorNode en iOS Safari porque
-   escribe directamente en el buffer de audio del sistema. */
-function _tocarBuffer(ctx, freq) {
-  try {
-    var sampleRate  = ctx.sampleRate;
-    var duration    = 1.4;
-    var numSamples  = Math.floor(sampleRate * duration);
-    var buffer      = ctx.createBuffer(1, numSamples, sampleRate);
-    var data        = buffer.getChannelData(0);
- 
-    for (var i = 0; i < numSamples; i++) {
-      var t        = i / sampleRate;
-      var envelope = 1 - (t / duration);           // fade-out lineal
-      data[i] = Math.sin(2 * Math.PI * freq * t) * envelope * 0.6;
-    }
- 
-    var source = ctx.createBufferSource();
-    source.buffer = buffer;
- 
-    var gainNode = ctx.createGain();
-    gainNode.gain.setValueAtTime(1.0, ctx.currentTime);
-    source.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    source.start(ctx.currentTime);
-  } catch(e) {
-    console.error('_tocarBuffer error:', e.message);
-  }
-}
- 
-function playNote(freq) {
-  var ctx = getAudioCtx();
-  if (!ctx) return;
-  if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
-  _tocarBuffer(ctx, freq);
-}
- 
 function buildPiano() {
   const container = document.getElementById('pianoKeys');
   container.innerHTML = '';
@@ -1572,19 +1498,69 @@ function buildPiano() {
 function pianoClick(freq, name) {
   playNote(freq);
   var el = document.getElementById('playingNote');
-  el.textContent = '\u266a  ' + name + '  \u00b7  ' + freq + ' Hz';
-  el.style.opacity = '1';
-  setTimeout(function(){ el.style.opacity = '0.4'; }, 1200);
+ 
+let audioCtx = null;
+ 
+function getAudioCtx() {
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  if (!audioCtx) audioCtx = new AC();
+  return audioCtx;
+}
+ 
+/* iOS Safari: el AudioContext DEBE crearse dentro del
+   mismo handler síncrono del gesto del usuario.
+   Recreamos uno nuevo cada vez que se pulsa el botón
+   para garantizar que no esté en estado "suspended". */
+function activarAudioIOS() {
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) { alert('Tu navegador no soporta audio web.'); return; }
+  audioCtx = new AC();
+  _tocarBuffer(audioCtx, 261.63); // Do3 de confirmación
+  var btn = document.getElementById('iosAudioBtn');
+  if (btn) btn.innerHTML = '<div style="font-family:\'Josefin Sans\',sans-serif;font-size:.75rem;letter-spacing:.12em;color:var(--contralto2);padding:.5rem 1rem;text-align:center;">✓ Audio activado — ya puedes tocar el teclado</div>';
+}
+ 
+function getMidiFreq(midi) {
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+ 
+/* Genera sonido con buffer sinusoidal manual.
+   Funciona en iOS Safari donde OscillatorNode falla. */
+function _tocarBuffer(ctx, freq) {
+  try {
+    var sr = ctx.sampleRate, dur = 1.4, n = Math.floor(sr * dur);
+    var buf = ctx.createBuffer(1, n, sr);
+    var d   = buf.getChannelData(0);
+    for (var i = 0; i < n; i++) {
+      var t = i / sr;
+      d[i]  = Math.sin(2 * Math.PI * freq * t) * (1 - t / dur) * 0.65;
+    }
+    var src = ctx.createBufferSource();
+    src.buffer = buf;
+    var g = ctx.createGain();
+    g.gain.value = 1;
+    src.connect(g);
+    g.connect(ctx.destination);
+    src.start(0);
+  } catch(e) { console.error('audio err:', e.message); }
+}
+ 
+function playNote(freq) {
+  var ctx = getAudioCtx();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();
+  _tocarBuffer(ctx, freq);
 }
  
 /* ══════════════════════════════════════════════════
-   BITÁCORA DE ENSAYO (Supabase)
+   BITÁCORA DE ENSAYO
 ══════════════════════════════════════════════════ */
 let bitacoraAdminAuth = false;
 let sesionActivaId    = null;
  
 function abrirBitacoraAdmin() {
-  const pass = prompt('Contraseña de administrador:');
+  var pass = prompt('Contraseña de administrador:');
   if (pass === ADMIN_PASSWORD) {
     bitacoraAdminAuth = true;
     document.getElementById('bitacoraAdminPanel').style.display = 'block';
@@ -1597,11 +1573,9 @@ async function crearSesion() {
   const tema = document.getElementById('sesionTema').value.trim();
   if (!tema) { alert('Escribe el tema del ensayo.'); return; }
   const { error } = await sb.from('sesiones').insert([{
-    tema,
-    fecha: new Date().toLocaleDateString('es-DO'),
-    activa: true
+    tema, fecha: new Date().toLocaleDateString('es-DO'), activa: true
   }]);
-  if (error) { alert('Error al crear sesión: ' + error.message); return; }
+  if (error) { alert('Error: ' + error.message); return; }
   document.getElementById('sesionTema').value = '';
   cargarBitacora();
 }
@@ -1610,12 +1584,12 @@ async function guardarNotaBitacora() {
   const persona = document.getElementById('bitacoraPersona').value;
   const texto   = document.getElementById('bitacoraTexto').value.trim();
   if (!persona || !texto) { alert('Selecciona tu nombre y escribe tu nota.'); return; }
-  if (!sesionActivaId)    { alert('No hay una sesión activa en este momento.'); return; }
+  if (!sesionActivaId)    { alert('No hay sesión activa en este momento.'); return; }
   const { error } = await sb.from('notas_sesion').insert([{
     sesion_id: sesionActivaId, persona, texto,
     fecha: new Date().toLocaleDateString('es-DO')
   }]);
-  if (error) { alert('Error al guardar: ' + error.message); return; }
+  if (error) { alert('Error: ' + error.message); return; }
   document.getElementById('bitacoraTexto').value = '';
   const ok = document.getElementById('bitacoraOk');
   ok.style.display = 'block';
@@ -1623,76 +1597,92 @@ async function guardarNotaBitacora() {
   cargarBitacora();
 }
  
+async function eliminarNotaBitacora(id, persona) {
+  const miPersona = document.getElementById('bitacoraPersona').value;
+  if (!bitacoraAdminAuth && miPersona !== persona) {
+    alert('Solo puedes eliminar tus propias notas, o el administrador puede eliminar cualquiera.');
+    return;
+  }
+  if (!confirm('¿Eliminar esta nota?')) return;
+  const { error } = await sb.from('notas_sesion').delete().eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  cargarBitacora();
+}
+ 
+async function eliminarSesion(id) {
+  if (!bitacoraAdminAuth) { alert('Solo el administrador puede eliminar sesiones.'); return; }
+  if (!confirm('¿Eliminar esta sesión y TODAS sus notas?')) return;
+  await sb.from('notas_sesion').delete().eq('sesion_id', id);
+  await sb.from('sesiones').delete().eq('id', id);
+  cargarBitacora();
+}
+ 
 async function cargarBitacora() {
   const listEl = document.getElementById('sesionesLista');
- 
   const { data: sesiones, error } = await sb
     .from('sesiones').select('*').order('created_at', { ascending: false });
  
-  if (error) {
-    listEl.innerHTML = '<div style="color:var(--baritono2);font-size:.84rem;">⚠ No se pudieron cargar las sesiones. Verifica que la tabla "sesiones" existe en Supabase.</div>';
-    return;
-  }
- 
+  if (error) { listEl.innerHTML = '<div style="color:var(--baritono2);font-size:.84rem;">⚠ No se pudieron cargar las sesiones.</div>'; return; }
   if (!sesiones || sesiones.length === 0) {
-    listEl.innerHTML = '<div style="color:var(--muted);font-size:.84rem;">Aún no hay sesiones registradas. Esteban puede crear la primera sesión usando el ⚙ de arriba.</div>';
+    listEl.innerHTML = '<div style="color:var(--muted);font-size:.84rem;">Aún no hay sesiones. Esteban crea la primera usando el ⚙ de arriba.</div>';
     document.getElementById('bitacoraFormPanel').style.display = 'none';
     return;
   }
  
-  // Sesión más reciente es la activa
   const activa = sesiones[0];
   sesionActivaId = activa.id;
   document.getElementById('sesionActivaNombre').textContent = activa.tema;
   document.getElementById('bitacoraFormPanel').style.display = 'block';
  
-  // Cargamos notas de todas las sesiones
   const { data: notas } = await sb.from('notas_sesion').select('*').order('created_at', { ascending: true });
- 
-  const clsMember = (name) => {
-    const m = members.find(x => x.name === name);
-    return m ? m.cls : 'mezzo';
-  };
+  const clsCls  = n => { const m = members.find(x => x.name === n); return m ? m.cls : 'mezzo'; };
+  const clrFor  = c => c === 'mezzo' ? 'var(--mezzo2)' : c === 'contralto' ? 'var(--contralto2)' : 'var(--baritono2)';
+  const miPerso = document.getElementById('bitacoraPersona').value;
  
   listEl.innerHTML = sesiones.map(s => {
-    const notasSesion = (notas || []).filter(n => n.sesion_id === s.id);
-    const esActiva    = s.id === activa.id;
+    const ns = (notas || []).filter(n => n.sesion_id === s.id);
+    const esActiva = s.id === activa.id;
+    const delBtn = `<button onclick="eliminarSesion(${s.id})" title="Eliminar sesión" style="font-size:.8rem;background:transparent;border:none;color:var(--baritono2);cursor:pointer;padding:.2rem .5rem;border-radius:6px;">🗑</button>`;
     return `
       <div class="sesion-card">
         <div class="sesion-header">
           <div>
-            <div class="sesion-fecha">${s.fecha}${esActiva ? ' · <span style="color:var(--contralto2);">Sesión activa</span>' : ''}</div>
+            <div class="sesion-fecha">${s.fecha}${esActiva ? ' · <span style="color:var(--contralto2)">Sesión activa</span>' : ''}</div>
             <div class="sesion-tema">${s.tema}</div>
           </div>
-          <div style="font-family:'Josefin Sans',sans-serif;font-size:.7rem;color:var(--muted);">${notasSesion.length} nota${notasSesion.length !== 1 ? 's' : ''}</div>
+          <div style="display:flex;align-items:center;gap:.5rem;">
+            <span style="font-family:'Josefin Sans',sans-serif;font-size:.7rem;color:var(--muted);">${ns.length} nota${ns.length!==1?'s':''}</span>
+            ${bitacoraAdminAuth ? delBtn : ''}
+          </div>
         </div>
-        ${notasSesion.length > 0 ? `
-          <div class="notas-lista">
-            ${notasSesion.map(n => `
-              <div class="nota-item">
-                <div class="nota-autor" style="color:var(--${clsMember(n.persona) === 'mezzo' ? 'mezzo2' : clsMember(n.persona) === 'contralto' ? 'contralto2' : 'baritono2'});">${n.persona}</div>
-                ${n.texto}
-              </div>`).join('')}
-          </div>` : `<div style="font-size:.82rem;color:var(--muted);font-style:italic;">Aún no hay notas para esta sesión.</div>`}
+        ${ns.length > 0 ? `<div class="notas-lista">${ns.map(n => {
+          const cls = clsCls(n.persona);
+          const pB  = bitacoraAdminAuth || miPerso === n.persona;
+          const safe = n.persona.replace(/'/g,"\\'");
+          return `<div class="nota-item" style="display:flex;justify-content:space-between;align-items:flex-start;gap:.4rem;">
+            <div style="flex:1;"><div class="nota-autor" style="color:${clrFor(cls)};">${n.persona}</div>${n.texto}</div>
+            ${pB ? `<button onclick="eliminarNotaBitacora(${n.id},'${safe}')" title="Eliminar" style="background:transparent;border:none;color:rgba(240,139,106,.45);cursor:pointer;padding:.2rem .4rem;border-radius:6px;font-size:.85rem;flex-shrink:0;" onmouseover="this.style.color='var(--baritono2)'" onmouseout="this.style.color='rgba(240,139,106,.45)'">✕</button>` : ''}
+          </div>`;
+        }).join('')}</div>` : `<div style="font-size:.82rem;color:var(--muted);font-style:italic;">Aún no hay notas.</div>`}
       </div>`;
   }).join('');
 }
  
 /* ══════════════════════════════════════════════════
-   EL MURO DEL GRUPO (Supabase)
+   EL MURO DEL GRUPO
 ══════════════════════════════════════════════════ */
+let muroPersonaActiva = '';
+ 
 async function publicarMuro() {
   const persona = document.getElementById('muroPersona').value;
   const texto   = document.getElementById('muroTexto').value.trim();
   if (!persona || !texto) { alert('Selecciona tu nombre y escribe tu mensaje.'); return; }
-  if (texto.length > 400) { alert('El mensaje es muy largo. Máximo 400 caracteres.'); return; }
- 
+  if (texto.length > 400) { alert('Máximo 400 caracteres.'); return; }
+  muroPersonaActiva = persona;
   const { error } = await sb.from('muro').insert([{
     persona, texto, fecha: new Date().toLocaleDateString('es-DO')
   }]);
- 
-  if (error) { alert('Error al publicar: ' + error.message); return; }
- 
+  if (error) { alert('Error: ' + error.message); return; }
   document.getElementById('muroTexto').value = '';
   const ok = document.getElementById('muroOk');
   ok.style.display = 'block';
@@ -1700,49 +1690,59 @@ async function publicarMuro() {
   cargarMuro();
 }
  
+async function eliminarMensajeMuro(id, persona) {
+  const miPerso = document.getElementById('muroPersona').value || muroPersonaActiva;
+  const esAdmin = adminAutenticado === true;
+  if (!esAdmin && miPerso !== persona) {
+    alert('Solo puedes eliminar tus propios mensajes, o el administrador puede eliminar cualquiera.');
+    return;
+  }
+  if (!confirm('¿Eliminar este mensaje del muro?')) return;
+  const { error } = await sb.from('muro').delete().eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  cargarMuro();
+}
+ 
 async function cargarMuro() {
   const listEl = document.getElementById('muroMensajes');
- 
   const { data: msgs, error } = await sb
     .from('muro').select('*').order('created_at', { ascending: false }).limit(50);
  
-  if (error) {
-    listEl.innerHTML = '<div style="color:var(--baritono2);font-size:.84rem;">⚠ No se pudo cargar el muro. Verifica que la tabla "muro" existe en Supabase.</div>';
-    return;
-  }
+  if (error) { listEl.innerHTML = '<div style="color:var(--baritono2);font-size:.84rem;">⚠ No se pudo cargar el muro.</div>'; return; }
+  if (!msgs || msgs.length === 0) { listEl.innerHTML = '<div style="color:var(--muted);font-size:.84rem;">El muro está vacío — ¡sé el primero en publicar algo!</div>'; return; }
  
-  if (!msgs || msgs.length === 0) {
-    listEl.innerHTML = '<div style="color:var(--muted);font-size:.84rem;">El muro está vacío — ¡sé el primero en publicar algo!</div>';
-    return;
-  }
+  const clsCls  = n => { const m = members.find(x => x.name === n); return m ? m.cls : 'mezzo'; };
+  const miPerso = document.getElementById('muroPersona').value || muroPersonaActiva;
+  const esAdmin = adminAutenticado === true;
  
-  const clsMember = (name) => {
-    const m = members.find(x => x.name === name);
-    return m ? m.cls : 'mezzo';
-  };
- 
-  listEl.innerHTML = msgs.map(m => `
-    <div class="muro-msg ${clsMember(m.persona)}-msg">
-      <div class="muro-msg-name">${m.persona}</div>
+  listEl.innerHTML = msgs.map(m => {
+    const cls = clsCls(m.persona);
+    const pB  = esAdmin || miPerso === m.persona;
+    const safe = m.persona.replace(/'/g,"\\'");
+    return `
+    <div class="muro-msg ${cls}-msg">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div class="muro-msg-name">${m.persona}</div>
+        ${pB ? `<button onclick="eliminarMensajeMuro(${m.id},'${safe}')" title="Eliminar" style="background:transparent;border:none;color:rgba(240,139,106,.4);cursor:pointer;padding:.1rem .4rem;border-radius:6px;font-size:.85rem;" onmouseover="this.style.color='var(--baritono2)'" onmouseout="this.style.color='rgba(240,139,106,.4)'">✕</button>` : ''}
+      </div>
       <div class="muro-msg-text">${m.texto}</div>
       <div class="muro-msg-meta">${m.fecha}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
  
 /* ══════════════════════════════════════════════════
-   ACTUALIZAR showPage PARA NUEVAS PÁGINAS
+   NAVEGACIÓN
 ══════════════════════════════════════════════════ */
-const _origShowPage = showPage;
-// Reemplazamos showPage para incluir los nuevos onLoad
 function showPage(id, btn) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   btn.classList.add('active');
-  if (id === 'progreso')   renderProgress();
-  if (id === 'piano')      buildPiano();
-  if (id === 'bitacora')   cargarBitacora();
-  if (id === 'muro')       cargarMuro();
+  if (id === 'progreso') renderProgress();
+  if (id === 'piano')    buildPiano();
+  if (id === 'bitacora') cargarBitacora();
+  if (id === 'muro')     cargarMuro();
 }
 function renderMembers() {
   document.getElementById('membersGrid').innerHTML = members.map(m => `
